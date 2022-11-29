@@ -1,0 +1,40 @@
+{
+  "address": "0x46B8aACB65800A1968711c5f367f9F0A61665404",
+  "abi": [],
+  "transactionHash": "0x0349bca3c5cf9357e8d94ed195292f246b9ef929befbcfa62e0e917f194403b5",
+  "receipt": {
+    "to": null,
+    "from": "0x573448a5E1a3550c29654E1d63DF95B2726E649E",
+    "contractAddress": "0x46B8aACB65800A1968711c5f367f9F0A61665404",
+    "transactionIndex": 2,
+    "gasUsed": "164518",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0xd9e13d8b01c50968fd911dd26e4e235065ca8c622f22f1fd318197d8d4e490dc",
+    "transactionHash": "0x0349bca3c5cf9357e8d94ed195292f246b9ef929befbcfa62e0e917f194403b5",
+    "logs": [],
+    "blockNumber": 24816553,
+    "cumulativeGasUsed": "1216877",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "numDeployments": 1,
+  "solcInputHash": "dfef3634e9ff937382408d71ccb64ada",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.9+commit.e5eed63a\"},\"language\":\"Solidity\",\"output\":{\"abi\":[],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/Lib/Prize.sol\":\"Prize\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":2000},\"remappings\":[]},\"sources\":{\"contracts/Lib/Prize.sol\":{\"content\":\"// Lib/Prize.sol\\n// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.9;\\n\\nlibrary Prize {\\n    // Rewards for every winner\\n    struct Universal {\\n        address token;\\n        uint256 amount;\\n    }\\n    // Rewards only available to the luckiest winners\\n    struct Surprise {\\n        bool is_revealed;\\n        address token;\\n        uint256 amount;\\n        address nft_token;\\n        uint256 nft_token_id;\\n        uint256 surprise_id;\\n    }\\n\\n    // Public Functions\\n    function universal_token(Universal storage _universal) public view returns (address) {\\n        return _universal.token;\\n    }\\n\\n    function universal_amount(Universal storage _universal) public view returns (uint256) {\\n        return _universal.amount;\\n    }\\n\\n    function surprise_token(Surprise storage _surprise) public view returns (address) {\\n        return _surprise.token;\\n    }\\n\\n    function surprise_amount(Surprise storage _surprise) public view returns (uint256) {\\n        return _surprise.amount;\\n    }\\n\\n    function surprise_nft_token(Surprise storage _surprise) public view returns (address) {\\n        return _surprise.nft_token;\\n    }\\n\\n    function surprise_nft_id(Surprise storage _surprise) public view returns (uint256) {\\n        return _surprise.nft_token_id;\\n    }\\n\\n    function surprise_surprise_id(Surprise storage _surprise) public view returns (uint256) {\\n        return _surprise.surprise_id;\\n    }\\n\\n    function surprise_is_revealed(Surprise storage _surprise) public view returns (bool) {\\n        return _surprise.is_revealed;\\n    }\\n\\n    //\\n    function _setUniversal(\\n        Universal storage _universal,\\n        address token_,\\n        uint256 amount_\\n    ) internal {\\n        _universal.token = token_;\\n        _universal.amount = amount_;\\n    }\\n\\n    function _setSurprise(\\n        Surprise storage _surprise,\\n        address token_,\\n        uint256 amount_,\\n        address nft_token_,\\n        uint256 nft_token_id_\\n    ) internal {\\n        _surprise.token = token_;\\n        _surprise.amount = amount_;\\n        _surprise.nft_token = nft_token_;\\n        _surprise.nft_token_id = nft_token_id_;\\n    }\\n\\n    function _superLuckyMan(Surprise storage _surprise, uint256 surprise_id_) internal {\\n        _surprise.is_revealed = true;\\n        _surprise.surprise_id = surprise_id_;\\n    }\\n}\\n\",\"keccak256\":\"0x44f65a56eb7edae4e6f14988e098d5ddaf96e727a8b48cc4c51f0d361346413d\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x61020261003a600b82828239805160001a60731461002d57634e487b7160e01b600052600060045260246000fd5b30600052607381538281f3fe73000000000000000000000000000000000000000030146080604052600436106100925760003560e01c80639dc5d3e3116100655780639dc5d3e314610149578063b28a6b5a1461015e578063b5f91e7114610186578063f88bd2e61461014957600080fd5b806320efe87a1461009757806352eee774146100c1578063691d76ef146100e457806388575b23146100f9575b600080fd5b6100ac6100a53660046101b3565b5460ff1690565b60405190151581526020015b60405180910390f35b6100d66100cf3660046101b3565b6004015490565b6040519081526020016100b8565b6100d66100f23660046101b3565b6003015490565b6101246101073660046101b3565b6002015473ffffffffffffffffffffffffffffffffffffffff1690565b60405173ffffffffffffffffffffffffffffffffffffffff90911681526020016100b8565b6100d66101573660046101b3565b6001015490565b61012461016c3660046101b3565b5473ffffffffffffffffffffffffffffffffffffffff1690565b6101246101943660046101b3565b54610100900473ffffffffffffffffffffffffffffffffffffffff1690565b6000602082840312156101c557600080fd5b503591905056fea2646970667358221220ef65478bafa4b7312d2f74fc6bb63dcc00d19ab9b814d9bf78b6a7cc65ac5c8e64736f6c63430008090033",
+  "deployedBytecode": "0x73000000000000000000000000000000000000000030146080604052600436106100925760003560e01c80639dc5d3e3116100655780639dc5d3e314610149578063b28a6b5a1461015e578063b5f91e7114610186578063f88bd2e61461014957600080fd5b806320efe87a1461009757806352eee774146100c1578063691d76ef146100e457806388575b23146100f9575b600080fd5b6100ac6100a53660046101b3565b5460ff1690565b60405190151581526020015b60405180910390f35b6100d66100cf3660046101b3565b6004015490565b6040519081526020016100b8565b6100d66100f23660046101b3565b6003015490565b6101246101073660046101b3565b6002015473ffffffffffffffffffffffffffffffffffffffff1690565b60405173ffffffffffffffffffffffffffffffffffffffff90911681526020016100b8565b6100d66101573660046101b3565b6001015490565b61012461016c3660046101b3565b5473ffffffffffffffffffffffffffffffffffffffff1690565b6101246101943660046101b3565b54610100900473ffffffffffffffffffffffffffffffffffffffff1690565b6000602082840312156101c557600080fd5b503591905056fea2646970667358221220ef65478bafa4b7312d2f74fc6bb63dcc00d19ab9b814d9bf78b6a7cc65ac5c8e64736f6c63430008090033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {},
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": null
+  }
+}
