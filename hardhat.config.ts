@@ -34,6 +34,21 @@ const config: HardhatUserConfig = {
     Administrator2: {
       default: 3,
     },
+    user1: {
+      default: 4,
+    },
+    user2: {
+      default: 5,
+    },
+    user3: {
+      default: 6,
+    },
+    user4: {
+      default: 7,
+    },
+    user5: {
+      default: 8,
+    },
   },
   networks: addForkConfiguration({
     hardhat: {
