@@ -17,15 +17,20 @@
       "kind": "uups"
     },
     {
+      "address": "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
+      "txHash": "0x348daaeecc9651424fb910d502e21d6056c8d87aceb7d6df47dec27dd96fc833",
+      "kind": "uups"
+    },
+    {
       "address": "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
-      "txHash": "0xc9f94d0caa8baff3463ff3fdfb4882d060722a9382610df431c65831d0751556",
+      "txHash": "0xa9f42872943f41ffeec90ae85cc2e56f34b23b23b9bf7b29435b9c63d7631bba",
       "kind": "uups"
     }
   ],
   "impls": {
     "60aaf2244dd2a06a66eaa64b4ed9918ee1920dc042e0735371e68137fbe782f4": {
-      "address": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
-      "txHash": "0x78c7fc93f17a262adc0a90d9f57aaf1e65e2bb92e36de3118d54553f615902b8",
+      "address": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
+      "txHash": "0x6ae11d5f47f3895c850999fe7120d0779286e7a8666e7f4d9e3a2203a97207cf",
       "layout": {
         "solcVersion": "0.8.9",
         "storage": [
