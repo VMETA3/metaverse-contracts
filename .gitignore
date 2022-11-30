@@ -26,4 +26,4 @@ deployments/localhost
 
 
 # upgrades
-/openzeppelin/*-31337.json
+/.openzeppelin/*-31337.json
