@@ -4,18 +4,13 @@ import {DeployFunction} from 'hardhat-deploy/types';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
-  const testToken = await hre.deployments.get('TestERC20');
-
-  const startTime = 1669704893;
-  const endTime = 1672296893;
-  const Investment = await hre.deployments.deploy('Investment', {
+  const TestToken = await hre.deployments.deploy('TestERC20', {
     from: deployer,
-    args: [testToken.address, deployer, startTime, endTime],
+    args: [],
   });
 
-  hre.deployments.log(`contract Test deployed at ${Investment.address}`);
+  hre.deployments.log(`contract Test deployed at ${TestToken.address}`);
 };
 
 export default func;
-func.tags = ['Investment'];
-func.dependencies = ['TestToken'];
+func.tags = ['TestToken'];
