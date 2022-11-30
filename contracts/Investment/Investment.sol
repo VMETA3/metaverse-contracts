@@ -11,7 +11,7 @@ contract Investment is Ownable {
     uint256 private unreturnedInterest;
 
     // Cumulative upper limit of individual investment
-    uint256 constant INDIVIDUAL_INVESTMENT_LIMIT = 50000;
+    uint256 constant INDIVIDUAL_INVESTMENT_LIMIT = 50000 * 10**18;
 
     uint256 constant INTERVAL = 30 days;
 
@@ -53,7 +53,7 @@ contract Investment is Ownable {
     }
 
     function deposit(uint256 amount) public {
-        require(block.timestamp > activityStartTime && block.timestamp < activityEndTime);
+        require(block.timestamp > activityStartTime && block.timestamp < activityEndTime,"The activity has not started or has ended");
 
         if (mapInvestor.inserted[msg.sender]) {
             uint256 len = mapInvestor.values[msg.sender].length;
@@ -62,7 +62,7 @@ contract Investment is Ownable {
             for (uint8 i = 0; i < len; i++) {
                 total += mapInvestor.values[msg.sender][i].amount;
             }
-            require(total + amount < INDIVIDUAL_INVESTMENT_LIMIT);
+            require(total + amount < INDIVIDUAL_INVESTMENT_LIMIT,"Exceeding investment limit");
 
             // Calculate the date before the last pledge, and increase the quantity within 30 days.
             // If it exceeds, it will be regarded as a new round of investment.
@@ -76,7 +76,7 @@ contract Investment is Ownable {
                 (uint8 level, uint8 times) = _calculation_level_and_times(newValue);
                 uint256 newInterest = _calculation_interest(newValue, times);
 
-                require(newInterest + unreturnedInterest < interestWarehouse);
+                require(newInterest + unreturnedInterest < interestWarehouse,"Insufficient interest warehouse");
 
                 interestToken.transferFrom(msg.sender, address(this), amount);
 
@@ -98,12 +98,12 @@ contract Investment is Ownable {
     }
 
     function _pushMapInvestor(uint256 amount) internal {
-        require(amount < INDIVIDUAL_INVESTMENT_LIMIT);
+        require(amount < INDIVIDUAL_INVESTMENT_LIMIT,"Exceeding investment limit");
 
         (uint8 level, uint8 times) = _calculation_level_and_times(amount);
         uint256 interest = _calculation_interest(amount, times);
 
-        require(interest + unreturnedInterest < interestWarehouse);
+        require(interest + unreturnedInterest < interestWarehouse,"Insufficient interest warehouse");
 
         interestToken.transferFrom(msg.sender, address(this), amount);
 

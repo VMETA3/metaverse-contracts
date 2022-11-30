@@ -21,6 +21,7 @@ const setup = deployments.createFixture(async () => {
 
 const SecondsForDay = 60 * 60 * 24;
 const SecondsForMonth = SecondsForDay * 30;
+const OneVM3 = ethers.utils.parseEther('1');
 const InvestmentLevelList = [
   {
     Level: 1,
@@ -39,13 +40,13 @@ describe('Investment', () => {
   it('normal deposit and withdraw check', async () => {
     const {Investment, TestToken, deployer, users, interestAccount} = await setup();
     const testUser1 = users[4];
-    const amount = 100;
-    const amount2 = 1000;
-    const amount3 = 10000;
-    const totalAmount = amount + amount2 + amount3;
-    const interestHouse = totalAmount * 5;
+    const amount = OneVM3.mul(100);
+    const amount2 = OneVM3.mul(1000);
+    const amount3 = OneVM3.mul(10000);
+    const totalAmount = amount.add(amount2.add(amount3));
+    const interestHouse = totalAmount.mul(5);
 
-    await deployer.TestToken.approve(interestAccount.address, interestHouse);
+    await interestAccount.TestToken.approve(Investment.address, interestHouse);
     await deployer.Investment.updateInterestWarehouse();
 
     // transfer some token to testUser1
@@ -65,7 +66,7 @@ describe('Investment', () => {
       await network.provider.send('evm_increaseTime', [SecondsForMonth + 1]);
       await expect(testUser1.Investment.withdraw())
         .to.be.emit(Investment, 'Withdraw')
-        .withArgs(testUser1.address, amount / 10);
+        .withArgs(testUser1.address, amount.div(10));
     }
 
     // deposit amout2, expect level 2
@@ -79,7 +80,7 @@ describe('Investment', () => {
       await network.provider.send('evm_increaseTime', [SecondsForMonth + 1]);
       await expect(testUser1.Investment.withdraw())
         .to.be.emit(Investment, 'Withdraw')
-        .withArgs(testUser1.address, amount2 / 10);
+        .withArgs(testUser1.address, amount2.div(10));
     }
 
     // deposit amout3, expect level 3
@@ -93,20 +94,20 @@ describe('Investment', () => {
       await network.provider.send('evm_increaseTime', [SecondsForMonth + 1]);
       await expect(testUser1.Investment.withdraw())
         .to.be.emit(Investment, 'Withdraw')
-        .withArgs(testUser1.address, amount3 / 10);
+        .withArgs(testUser1.address, amount3.div(10));
     }
   });
 
   it('multiple investment in a month check', async () => {
     const {Investment, TestToken, deployer, users, interestAccount} = await setup();
     const testUser1 = users[4];
-    const amount = 100;
-    const amount2 = 1000;
-    const amount3 = 10000;
-    const totalAmount = amount + amount2 + amount3;
-    const interestHouse = totalAmount * 5;
+    const amount = OneVM3.mul(100);
+    const amount2 = OneVM3.mul(1000);
+    const amount3 = OneVM3.mul(10000);
+    const totalAmount = amount.add(amount2.add(amount3));
+    const interestHouse = totalAmount.mul(5);
 
-    await deployer.TestToken.approve(interestAccount.address, interestHouse);
+    await interestAccount.TestToken.approve(interestAccount.address, interestHouse);
     await deployer.Investment.updateInterestWarehouse();
 
     // transfer some token to testUser1
@@ -146,19 +147,19 @@ describe('Investment', () => {
       await network.provider.send('evm_increaseTime', [SecondsForMonth + 1]);
       await expect(testUser1.Investment.withdraw())
         .to.be.emit(Investment, 'Withdraw')
-        .withArgs(testUser1.address, totalAmount / 10);
+        .withArgs(testUser1.address, totalAmount.div(10));
     }
   });
 
   it('limit check', async () => {
     const {Investment, deployer, TestToken, users, interestAccount} = await setup();
     const testUser1 = users[4];
-    const amount = 100;
-    const amount2 = 50000;
-    const totalAmount = amount + amount2;
-    const interestHouse = totalAmount * 5;
+    const amount = OneVM3.mul(100);
+    const amount2 = OneVM3.mul(50000);
+    const totalAmount = amount.add(amount2);
+    const interestHouse = totalAmount.mul(5);
 
-    await deployer.TestToken.approve(interestAccount.address, interestHouse);
+    await interestAccount.TestToken.approve(interestAccount.address, interestHouse);
     await deployer.Investment.updateInterestWarehouse();
 
     // transfer some token to testUser1
