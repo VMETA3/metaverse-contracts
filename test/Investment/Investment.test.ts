@@ -2,7 +2,6 @@ import {expect} from '../chai-setup';
 import {ethers, deployments, getUnnamedAccounts, getNamedAccounts, network} from 'hardhat';
 import {Investment, TestERC20} from '../../typechain';
 import {setupUser, setupUsers} from '../utils';
-import {investment} from '../../typechain/contracts';
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture('Investment');
