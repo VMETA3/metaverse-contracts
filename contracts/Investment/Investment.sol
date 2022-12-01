@@ -53,7 +53,10 @@ contract Investment is Ownable {
     }
 
     function deposit(uint256 amount) public {
-        require(block.timestamp > activityStartTime && block.timestamp < activityEndTime,"The activity has not started or has ended");
+        require(
+            block.timestamp > activityStartTime && block.timestamp < activityEndTime,
+            "Investment: The activity has not started or has ended"
+        );
 
         if (mapInvestor.inserted[msg.sender]) {
             uint256 len = mapInvestor.values[msg.sender].length;
@@ -62,7 +65,7 @@ contract Investment is Ownable {
             for (uint8 i = 0; i < len; i++) {
                 total += mapInvestor.values[msg.sender][i].amount;
             }
-            require(total + amount < INDIVIDUAL_INVESTMENT_LIMIT,"Exceeding investment limit");
+            require(total + amount < INDIVIDUAL_INVESTMENT_LIMIT, "Investment: Exceeding investment limit (Inserted)");
 
             // Calculate the date before the last pledge, and increase the quantity within 30 days.
             // If it exceeds, it will be regarded as a new round of investment.
@@ -76,7 +79,10 @@ contract Investment is Ownable {
                 (uint8 level, uint8 times) = _calculation_level_and_times(newValue);
                 uint256 newInterest = _calculation_interest(newValue, times);
 
-                require(newInterest + unreturnedInterest < interestWarehouse,"Insufficient interest warehouse");
+                require(
+                    newInterest + unreturnedInterest < interestWarehouse,
+                    "Investment: Insufficient interest warehouse (Inserted)"
+                );
 
                 interestToken.transferFrom(msg.sender, address(this), amount);
 
@@ -98,12 +104,12 @@ contract Investment is Ownable {
     }
 
     function _pushMapInvestor(uint256 amount) internal {
-        require(amount < INDIVIDUAL_INVESTMENT_LIMIT,"Exceeding investment limit");
+        require(amount < INDIVIDUAL_INVESTMENT_LIMIT, "Investment: Exceeding investment limit");
 
         (uint8 level, uint8 times) = _calculation_level_and_times(amount);
         uint256 interest = _calculation_interest(amount, times);
 
-        require(interest + unreturnedInterest < interestWarehouse,"Insufficient interest warehouse");
+        require(interest + unreturnedInterest < interestWarehouse, "Investment: Insufficient interest warehouse");
 
         interestToken.transferFrom(msg.sender, address(this), amount);
 
@@ -140,7 +146,7 @@ contract Investment is Ownable {
         }
     }
 
-    function _calculation_can_return_times() internal view returns (uint8[] memory times, uint256 total) {
+    function _calculation_can_return_times() internal view returns (uint8[3] memory times, uint256 total) {
         for (uint8 i = 0; i < mapInvestor.values[msg.sender].length; i++) {
             // Less than 30 days, failing to meet the distribution conditions
             if (block.timestamp - mapInvestor.values[msg.sender][i].startTime <= INTERVAL) {
@@ -163,7 +169,7 @@ contract Investment is Ownable {
     }
 
     function withdraw() public {
-        (uint8[] memory times, uint256 amount) = _calculation_can_return_times();
+        (uint8[3] memory times, uint256 amount) = _calculation_can_return_times();
         if (amount != 0) {
             interestToken.transferFrom(interestAddr, msg.sender, amount);
             interestWarehouse -= amount;
@@ -180,11 +186,13 @@ contract Investment is Ownable {
         interestWarehouse = interestToken.allowance(interestAddr, address(this));
     }
 
-    function getLatestList() external view returns (LatestList[] memory list) {
+    function getLatestList() external view returns (LatestList[] memory) {
+        LatestList[] memory list = new LatestList[](mapInvestor.keys.length);
         for (uint256 i = 0; i < mapInvestor.keys.length; i++) {
             address key = mapInvestor.keys[i];
             list[i] = LatestList(key, mapInvestor.values[key][mapInvestor.values[key].length - 1].level);
         }
+        return list;
     }
 
     function getLevel(uint8 index) external view returns (uint8 level) {
