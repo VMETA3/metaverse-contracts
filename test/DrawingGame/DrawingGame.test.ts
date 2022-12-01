@@ -1,5 +1,5 @@
 import { expect } from '../chai-setup';
-import { ethers, deployments, getUnnamedAccounts, getNamedAccounts } from 'hardhat';
+import { ethers, deployments, getUnnamedAccounts, getNamedAccounts, network } from 'hardhat';
 import { DrawingGame, GameItem, Investment, TestERC20 } from '../../typechain';
 import { setupUser, setupUsers } from '../utils';
 import { time } from "@nomicfoundation/hardhat-network-helpers";
@@ -33,22 +33,24 @@ describe("DrawingGame contract", function () {
 
         // Add interest warehouse
         const interestWarehouse = ethers.utils.parseEther("10000");
-        await deployer.TestToken.approve(interestAccount.address, interestWarehouse);
+        await deployer.TestToken.transfer(interestAccount.address, interestWarehouse);
+        await interestAccount.TestToken.approve(Investment.address, interestWarehouse);
         await deployer.Investment.updateInterestWarehouse();
-        expect(await TestToken.allowance(deployer.address, interestAccount.address)).to.be.eq(interestWarehouse);
+        expect(await TestToken.allowance(interestAccount.address, Investment.address)).to.be.eq(interestWarehouse);
 
         // Add investor
         const amount = ethers.utils.parseEther("100");
         await deployer.TestToken.transfer(testUser1.address, amount);
         expect(await TestToken.balanceOf(testUser1.address)).to.be.eq(amount);
         await testUser1.TestToken.approve(Investment.address, amount);
-        expect(await testUser1.Investment.deposit(amount))
+        await expect(testUser1.Investment.deposit(amount))
             .to.be.emit(Investment, 'Deposit')
             .withArgs(testUser1.address, amount);
         expect(await testUser1.Investment.getLevel(0)).to.be.eq(1);
-        expect((await testUser1.Investment.getLatestList()).length).to.be.greaterThan(0);
 
         // Draw
-        expect(await testUser1.DrawingGame.draw()).to.be.emit(DrawingGame, 'Draw').withArgs(testUser1.address, time.latest());
+        // modify network block timestamp
+        await network.provider.send('evm_setNextBlockTimestamp', [1670116072]); //FIXME
+        await expect(testUser1.DrawingGame.draw()).to.be.emit(DrawingGame, 'Draw').withArgs(testUser1.address, time.latest());
     });
 });
