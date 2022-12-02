@@ -46,6 +46,7 @@ describe('Investment', () => {
     const totalAmount = amount.add(amount2.add(amount3));
     const interestHouse = totalAmount.mul(5);
 
+    await deployer.TestToken.transfer(interestAccount.address, interestHouse);
     await interestAccount.TestToken.approve(Investment.address, interestHouse);
     await deployer.Investment.updateInterestWarehouse();
 
@@ -107,7 +108,8 @@ describe('Investment', () => {
     const totalAmount = amount.add(amount2.add(amount3));
     const interestHouse = totalAmount.mul(5);
 
-    await interestAccount.TestToken.approve(interestAccount.address, interestHouse);
+    await deployer.TestToken.transfer(interestAccount.address, interestHouse);
+    await interestAccount.TestToken.approve(Investment.address, interestHouse);
     await deployer.Investment.updateInterestWarehouse();
 
     // transfer some token to testUser1
@@ -159,12 +161,14 @@ describe('Investment', () => {
     const totalAmount = amount.add(amount2);
     const interestHouse = totalAmount.mul(5);
 
-    await interestAccount.TestToken.approve(interestAccount.address, interestHouse);
+    await deployer.TestToken.transfer(interestAccount.address, interestHouse);
+    await interestAccount.TestToken.approve(Investment.address, interestHouse);
     await deployer.Investment.updateInterestWarehouse();
 
     // transfer some token to testUser1
     await deployer.TestToken.transfer(testUser1.address, totalAmount);
     expect(await TestToken.balanceOf(testUser1.address)).to.be.eq(totalAmount);
+    await testUser1.TestToken.approve(Investment.address, totalAmount);
 
     await expect(testUser1.Investment.deposit(amount))
       .to.be.emit(Investment, 'Deposit')
@@ -176,6 +180,7 @@ describe('Investment', () => {
     const testUser2 = users[5];
     await deployer.TestToken.transfer(testUser2.address, amount);
     expect(await TestToken.balanceOf(testUser2.address)).to.be.eq(amount);
+    await testUser2.TestToken.approve(Investment.address, amount);
     await expect(testUser2.Investment.deposit(amount))
       .to.be.emit(Investment, 'Deposit')
       .withArgs(testUser2.address, amount);
