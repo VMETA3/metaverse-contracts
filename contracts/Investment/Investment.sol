@@ -2,10 +2,10 @@
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Investment is Ownable {
-    ERC20 interestToken;
+    IERC20 interestToken;
     address interestAddr;
     uint256 private interestWarehouse;
     uint256 private unreturnedInterest;
@@ -46,7 +46,7 @@ contract Investment is Ownable {
         uint256 _activityStartTime,
         uint256 _activityEndTime
     ) {
-        interestToken = ERC20(_interestToken);
+        interestToken = IERC20(_interestToken);
         interestAddr = _interestAddr;
         activityStartTime = _activityStartTime;
         activityEndTime = _activityEndTime;
