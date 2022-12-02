@@ -146,7 +146,9 @@ contract Investment is Ownable {
         }
     }
 
-    function _calculation_can_return_times() internal view returns (uint8[3] memory times, uint256 total) {
+    function _calculation_can_return_times() internal view returns (uint8[] memory, uint256) {
+        uint8[] memory times = new uint8[](mapInvestor.values[msg.sender].length);
+        uint256 total;
         for (uint8 i = 0; i < mapInvestor.values[msg.sender].length; i++) {
             // Less than 30 days, failing to meet the distribution conditions
             if (block.timestamp - mapInvestor.values[msg.sender][i].startTime <= INTERVAL) {
@@ -155,13 +157,16 @@ contract Investment is Ownable {
 
             uint8 totalTimes = _calculation_times(mapInvestor.values[msg.sender][i].level);
             uint8 gotTimes = totalTimes - mapInvestor.values[msg.sender][i].residualTimes;
-            uint256 shouldGetTimes = (block.timestamp - mapInvestor.values[msg.sender][i].startTime) / INTERVAL;
+            uint256 lastMonth = (block.timestamp - mapInvestor.values[msg.sender][i].startTime) / INTERVAL;
 
-            if (shouldGetTimes - gotTimes > 0) {
-                times[i] = uint8(shouldGetTimes - gotTimes);
-                total += (shouldGetTimes - gotTimes) * (mapInvestor.values[msg.sender][i].amount / 10);
+            if (mapInvestor.values[msg.sender][i].residualTimes == 0) {
+                times[i] = 0;
+            } else {
+                times[i] = uint8(lastMonth - gotTimes);
             }
+            total += times[i] * (mapInvestor.values[msg.sender][i].amount / 10);
         }
+        return (times, total);
     }
 
     function canWithdraw() public view returns (uint256 total) {
@@ -169,7 +174,7 @@ contract Investment is Ownable {
     }
 
     function withdraw() public {
-        (uint8[3] memory times, uint256 amount) = _calculation_can_return_times();
+        (uint8[] memory times, uint256 amount) = _calculation_can_return_times();
         if (amount != 0) {
             interestToken.transferFrom(interestAddr, msg.sender, amount);
             interestWarehouse -= amount;
