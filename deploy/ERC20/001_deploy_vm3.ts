@@ -1,11 +1,11 @@
-import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { DeployFunction } from 'hardhat-deploy/types';
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
+import {DeployFunction} from 'hardhat-deploy/types';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, getNamedAccounts } = hre;
-  const { deploy } = deployments;
+  const {deployments, getNamedAccounts} = hre;
+  const {deploy} = deployments;
 
-  const { deployer, possessor, Administrator1, Administrator2 } = await getNamedAccounts();
+  const {deployer, possessor, Administrator1, Administrator2} = await getNamedAccounts();
 
   const chainId = hre.network.config.chainId;
   const TotalMint = 80000000;

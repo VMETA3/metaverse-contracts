@@ -1,12 +1,12 @@
-import { expect } from '../chai-setup';
-import { ethers, deployments, getUnnamedAccounts, getNamedAccounts } from 'hardhat';
-import { VM3 } from '../../typechain';
-import { setupUser, setupUsers } from '../utils';
+import {expect} from '../chai-setup';
+import {ethers, deployments, getUnnamedAccounts, getNamedAccounts} from 'hardhat';
+import {VM3} from '../../typechain';
+import {setupUser, setupUsers} from '../utils';
 import web3 from 'web3';
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture('VM3');
-  const { possessor, Administrator1, Administrator2 } = await getNamedAccounts();
+  const {possessor, Administrator1, Administrator2} = await getNamedAccounts();
   const contracts = {
     VM3: <VM3>await ethers.getContract('VM3'),
   };
@@ -24,13 +24,13 @@ const setup = deployments.createFixture(async () => {
 describe('VM3 Token', () => {
   describe('Ownable check', () => {
     it('owners check', async () => {
-      const { VM3, Administrator1, Administrator2 } = await setup();
+      const {VM3, Administrator1, Administrator2} = await setup();
       const owners = await VM3.owners();
       expect(owners[1]).to.be.eq(Administrator1.address);
       expect(owners[2]).to.be.eq(Administrator2.address);
     });
     it('transferOwnership check', async () => {
-      const { users, VM3, Administrator1 } = await setup();
+      const {users, VM3, Administrator1} = await setup();
       await expect(Administrator1.VM3.transferOwnership(users[0].address))
         .to.emit(VM3, 'OwnershipTransferred')
         .withArgs(Administrator1.address, users[0].address);
@@ -45,7 +45,7 @@ describe('VM3 Token', () => {
 
   describe('multiple signature check', () => {
     it('mint check', async () => {
-      const { users, VM3, Administrator1, Administrator2 } = await setup();
+      const {users, VM3, Administrator1, Administrator2} = await setup();
       const nonce = await VM3.nonce();
       const to = users[0].address;
       const amount = 100;
@@ -64,7 +64,7 @@ describe('VM3 Token', () => {
     });
 
     it('check insufficient signatures', async () => {
-      const { users, VM3, Administrator1 } = await setup();
+      const {users, VM3, Administrator1} = await setup();
       const nonce = await VM3.nonce();
       const to = users[0].address;
       const amount = 100;
@@ -77,7 +77,7 @@ describe('VM3 Token', () => {
     });
 
     it('check strange signatures', async () => {
-      const { users, VM3, Administrator1 } = await setup();
+      const {users, VM3, Administrator1} = await setup();
 
       const nonce = await VM3.nonce();
       const to = users[0].address;
