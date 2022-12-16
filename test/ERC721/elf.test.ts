@@ -36,7 +36,7 @@ const setup = deployments.createFixture(async () => {
 
   const contracts = {
     VM3: <VM3>await ethers.getContract('VM3'),
-    Elf: <VM3Elf>await ethers.getContract('Land'),
+    Elf: <VM3Elf>await ethers.getContract('VM3Elf'),
     Proxy: <VM3Elf>VM3ElfProxy,
   };
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
