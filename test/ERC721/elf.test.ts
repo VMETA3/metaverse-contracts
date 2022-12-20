@@ -1,13 +1,13 @@
-import {expect} from '../chai-setup';
-import {ethers, upgrades, deployments, getUnnamedAccounts, getNamedAccounts, network} from 'hardhat';
-import {VM3, VM3Elf} from '../../typechain';
-import {setupUser, setupUsers} from '../utils';
+import { expect } from '../chai-setup';
+import { ethers, upgrades, deployments, getUnnamedAccounts, getNamedAccounts, network } from 'hardhat';
+import { VM3, VM3Elf } from '../../typechain';
+import { setupUser, setupUsers } from '../utils';
 import web3 from 'web3';
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture('VM3Elf');
   await deployments.fixture('VM3');
-  const {deployer, possessor, Administrator1, Administrator2} = await getNamedAccounts();
+  const { deployer, possessor, Administrator1, Administrator2 } = await getNamedAccounts();
   const OnehundredVM3 = ethers.BigNumber.from('100000000000000000000');
   const TenVM3 = OnehundredVM3.div(10);
 
@@ -60,13 +60,13 @@ const setup = deployments.createFixture(async () => {
 describe('VM3Elf Token', () => {
   describe('proxy information', async () => {
     it('The logical contract data is empty', async () => {
-      const {Elf} = await setup();
+      const { Elf } = await setup();
       expect(await Elf.name()).to.be.eq('');
       expect(await Elf.symbol()).to.be.eq('');
       expect(await Elf.symbol()).to.be.eq('');
     });
     it('The agent contract has the correct information', async () => {
-      const {Proxy, Name, Symbol, Costs, Administrator1, Administrator2} = await setup();
+      const { Proxy, Name, Symbol, Costs, Administrator1, Administrator2 } = await setup();
       expect(await Proxy.name()).to.be.eq(Name);
       expect(await Proxy.symbol()).to.be.eq(Symbol);
       expect(await Proxy.costs()).to.be.eq(Costs);
@@ -79,7 +79,7 @@ describe('VM3Elf Token', () => {
 
   describe('complete casting process', async () => {
     it('Deposit to self and build Elf', async () => {
-      const {VM3, Proxy, OnehundredVM3, TenVM3, TokenURI, users, possessor, Administrator1, Administrator2} =
+      const { VM3, Proxy, OnehundredVM3, TenVM3, TokenURI, users, possessor, Administrator1, Administrator2 } =
         await setup();
       const User = users[10];
       const BuildHash = web3.utils.hexToBytes(await Proxy.getBuildHash(User.address, TokenURI, Proxy.nonce()));
@@ -125,7 +125,7 @@ describe('VM3Elf Token', () => {
     });
 
     it('Deposit to someone and build Elf', async () => {
-      const {VM3, Proxy, OnehundredVM3, TenVM3, TokenURI, users, possessor, Administrator1, Administrator2} =
+      const { VM3, Proxy, OnehundredVM3, TenVM3, TokenURI, users, possessor, Administrator1, Administrator2 } =
         await setup();
       const User = users[10];
       const Someone = users[9];
@@ -220,7 +220,7 @@ describe('VM3Elf Token', () => {
 
   describe('deposit and withdraw', async () => {
     it('Verify users deposit balance', async () => {
-      const {VM3, Proxy, OnehundredVM3, TenVM3, users, possessor} = await setup();
+      const { VM3, Proxy, OnehundredVM3, TenVM3, users, possessor } = await setup();
       const User = users[10];
       const Someone = users[9];
       await expect(possessor.VM3.transfer(User.address, OnehundredVM3.mul(10)))
@@ -242,7 +242,7 @@ describe('VM3Elf Token', () => {
       expect(await Proxy.balanceOfVM3(Someone.address)).to.be.eq(TenVM3);
     });
     it('Verify users withdraw balance', async () => {
-      const {VM3, Proxy, OnehundredVM3, TenVM3, users, possessor} = await setup();
+      const { VM3, Proxy, OnehundredVM3, TenVM3, users, possessor } = await setup();
       const User = users[10];
       const U1 = users[9];
       const U2 = users[8];
@@ -269,7 +269,7 @@ describe('VM3Elf Token', () => {
     });
 
     it('Verify admin refund balance', async () => {
-      const {VM3, Proxy, OnehundredVM3, TenVM3, Administrator1, Administrator2, users, possessor} = await setup();
+      const { VM3, Proxy, OnehundredVM3, TenVM3, Administrator1, Administrator2, users, possessor } = await setup();
       const User = users[10];
       const U1 = users[9];
       const U2 = users[8];
