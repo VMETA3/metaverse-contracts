@@ -41,6 +41,7 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
 
     event BuyVM3(address indexed from, uint64 indexed saleNumber, uint256 amount);
     event WithdrawVM3(address indexed from, uint64 indexed saleNumber, uint256 amount);
+    event AddTokens(address indexed from, address[] tokens, address[] priceFeeds);
 
     address public USDT;
     address public VM3;
@@ -175,6 +176,8 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         for (uint256 i = 0; i < tokens.length; i++) {
             _addToken(tokens[i], priceFeeds[i]);
         }
+
+        emit AddTokens(msg.sender, tokens, priceFeeds);
     }
 
     function setSaleTime(
@@ -313,6 +316,7 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
     }
 
     function _addToken(address token, address priceFeed) internal {
+        require(!supportToken[token], "PrivateSale: token already added");
         supportToken[token] = true;
         (, int256 price, , , ) = AggregatorV3Interface(priceFeed).latestRoundData();
         require(price > 0, "PrivateSale: Bad priceFeed");
