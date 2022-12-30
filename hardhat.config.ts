@@ -37,6 +37,24 @@ const config: HardhatUserConfig = {
     interestAccount: {
       default: 19,
     },
+    possessor: {
+      default: 1,
+    },
+    user1: {
+      default: 4,
+    },
+    user2: {
+      default: 5,
+    },
+    user3: {
+      default: 6,
+    },
+    user4: {
+      default: 7,
+    },
+    user5: {
+      default: 8,
+    },
   },
   networks: addForkConfiguration({
     hardhat: {
@@ -44,6 +62,7 @@ const config: HardhatUserConfig = {
     },
     localhost: {
       url: node_url('localhost'),
+      chainId: 31337,
       accounts: accounts(),
     },
     staging: {
@@ -68,6 +87,7 @@ const config: HardhatUserConfig = {
     },
     bsc_test: {
       url: node_url('bsc_test'),
+      chainId: 97,
       accounts: accounts('bsc_test'),
     },
   }),
@@ -83,7 +103,7 @@ const config: HardhatUserConfig = {
     coinmarketcap: process.env.COINMARKETCAP_API_KEY,
     showTimeSpent: true,
     showMethodSig: true,
-    maxMethodDiff: 10,
+    // maxMethodDiff: 10,
     outputFile: process.env.CI ? 'gas-report.txt' : undefined,
   },
   typechain: {
