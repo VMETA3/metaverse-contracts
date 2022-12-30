@@ -34,6 +34,9 @@ const config: HardhatUserConfig = {
     Administrator2: {
       default: 3,
     },
+    interestAccount: {
+      default: 19,
+    },
     possessor: {
       default: 1,
     },
