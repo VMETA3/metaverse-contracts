@@ -82,7 +82,7 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
         string memory tokenURI_,
         uint256 nonce_
     ) public view returns (bytes32) {
-        return keccak256(abi.encodePacked(DOMAIN, keccak256("awardItem(address,string)"), to, tokenURI_, nonce_));
+        return keccak256(abi.encodePacked(DOMAIN, keccak256("build(string,bytes[])"), to, tokenURI_, nonce_));
     }
 
     function getRefundHash(
@@ -101,21 +101,16 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
         return keccak256(abi.encodePacked(DOMAIN, keccak256("refundAtDisposal(address,uint256)"), to, amount, nonce_));
     }
 
-    function build(string memory tokenURI_, bytes[] memory sigs)
-        external
-        onlyMultipleOwner(_hashToSign(getBuildHash(_msgSender(), tokenURI_, nonce)), sigs)
-        deduct
-        returns (uint256)
-    {
-        return _build(_msgSender(), tokenURI_);
+    function build(string memory tokenURI_, uint256 nonce_) external deduct returns (uint256) {
+        return _build(_msgSender(), tokenURI_, nonce_);
     }
 
     function buildTo(
         address to,
         string memory tokenURI_,
-        bytes[] memory sigs
-    ) external onlyMultipleOwner(_hashToSign(getBuildHash(to, tokenURI_, nonce)), sigs) deduct returns (uint256) {
-        return _build(to, tokenURI_);
+        uint256 nonce_
+    ) external deduct returns (uint256) {
+        return _build(to, tokenURI_, nonce_);
     }
 
     function _increment() private {
@@ -124,7 +119,11 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
         }
     }
 
-    function _build(address to, string memory tokenURI_) private returns (uint256) {
+    function _build(
+        address to,
+        string memory tokenURI_,
+        uint256 nonce_
+    ) private onlyOperationPendding(HashToSign(getBuildHash(to, tokenURI_, nonce_))) returns (uint256) {
         uint256 newItemId = _tokenIdCounter;
         _mint(to, newItemId);
         _tokenURIs[newItemId] = tokenURI_;
@@ -177,8 +176,8 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
     function refund(
         address to,
         uint256 amount,
-        bytes[] memory sigs
-    ) public lock onlyMultipleOwner(_hashToSign(getRefundHash(to, amount, nonce)), sigs) {
+        uint256 nonce_
+    ) public lock onlyOperationPendding(HashToSign(getRefundHash(to, amount, nonce_))) {
         require(_depositAmounts[to] >= amount, "Elf: Insufficient user balance");
         _depositAmounts[to] -= amount;
         _refund(to, amount, false);
@@ -187,8 +186,8 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
     function refundAtDisposal(
         address to,
         uint256 amount,
-        bytes[] memory sigs
-    ) public lock onlyMultipleOwner(_hashToSign(getrefundAtDisposalHash(to, amount, nonce)), sigs) {
+        uint256 nonce_
+    ) public lock onlyOperationPendding(HashToSign(getrefundAtDisposalHash(to, amount, nonce_))) {
         require(atDisposal >= amount, "Elf: Insufficient atDisposal");
         atDisposal -= amount;
         _refund(to, amount, true);
@@ -205,7 +204,7 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
         emit Refund(to, amount, disposal);
     }
 
-    function _hashToSign(bytes32 data) internal pure returns (bytes32) {
+    function HashToSign(bytes32 data) public pure returns (bytes32) {
         return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", data));
     }
 

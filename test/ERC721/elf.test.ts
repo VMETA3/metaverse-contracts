@@ -82,7 +82,8 @@ describe('VM3Elf Token', () => {
       const {VM3, Proxy, OnehundredVM3, TenVM3, TokenURI, users, possessor, Administrator1, Administrator2} =
         await setup();
       const User = users[10];
-      const BuildHash = web3.utils.hexToBytes(await Proxy.getBuildHash(User.address, TokenURI, Proxy.nonce()));
+      const Nonce1 = 0;
+      const BuildHash = web3.utils.hexToBytes(await Proxy.getBuildHash(User.address, TokenURI, Nonce1));
       const Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(BuildHash));
       const Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(BuildHash));
       const Sign = [Sig1, Sig2];
@@ -101,20 +102,33 @@ describe('VM3Elf Token', () => {
         .withArgs(User.address, TenVM3.mul(2));
 
       // Step 2: Verify unauthorized transactions
-      await expect(User.Proxy.build(TokenURI, [])).to.revertedWith('SafeOwnableUpgradeable: no enough confirms');
+      await expect(User.Proxy.build(TokenURI, Nonce1)).to.revertedWith(
+        'SafeOwnableUpgradeable: operation not in pending'
+      );
 
       // Step 3: Buiuld ELF
-      await expect(User.Proxy.build(TokenURI, Sign)).to.emit(Proxy, 'Build').withArgs(User.address, 0);
+      await Administrator1.Proxy.AddOpHashToPending(
+        web3.utils.hexToBytes(await Proxy.HashToSign(await Proxy.getBuildHash(User.address, TokenURI, Nonce1))),
+        Sign
+      );
+      await expect(User.Proxy.build(TokenURI, Nonce1)).to.emit(Proxy, 'Build').withArgs(User.address, 0);
 
       // Step 4: Try to use the last signature and get an error
-      await expect(User.Proxy.build(TokenURI, Sign)).to.revertedWith('SafeOwnableUpgradeable: signer is not owner');
+      await expect(User.Proxy.build(TokenURI, Nonce1)).to.revertedWith(
+        'SafeOwnableUpgradeable: operation not in pending'
+      );
 
       // Step 5: Buiuld again
-      const BuildHash2 = web3.utils.hexToBytes(await Proxy.getBuildHash(User.address, TokenURI, Proxy.nonce()));
+      const Nonce2 = 1;
+      const BuildHash2 = web3.utils.hexToBytes(await Proxy.getBuildHash(User.address, TokenURI, Nonce2));
       const Sig1_2 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(BuildHash2));
       const Sig2_2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(BuildHash2));
       const Sign2 = [Sig1_2, Sig2_2];
-      await expect(User.Proxy.build(TokenURI, Sign2)).to.emit(Proxy, 'Build').withArgs(User.address, 1);
+      await Administrator1.Proxy.AddOpHashToPending(
+        web3.utils.hexToBytes(await Proxy.HashToSign(await Proxy.getBuildHash(User.address, TokenURI, Nonce2))),
+        Sign2
+      );
+      await expect(User.Proxy.build(TokenURI, Nonce2)).to.emit(Proxy, 'Build').withArgs(User.address, 1);
 
       // Step 6: Verify the ELS data
       expect(await Proxy.balanceOf(User.address)).to.be.eq(2);
@@ -129,7 +143,8 @@ describe('VM3Elf Token', () => {
         await setup();
       const User = users[10];
       const Someone = users[9];
-      const BuildHash = web3.utils.hexToBytes(await Proxy.getBuildHash(Someone.address, TokenURI, Proxy.nonce()));
+      const Nonce = 0;
+      const BuildHash = web3.utils.hexToBytes(await Proxy.getBuildHash(Someone.address, TokenURI, Nonce));
       const Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(BuildHash));
       const Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(BuildHash));
       const Sign = [Sig1, Sig2];
@@ -148,38 +163,45 @@ describe('VM3Elf Token', () => {
         .withArgs(Someone.address, TenVM3.mul(2));
 
       // Step 2: Verify unauthorized transactions
-      await expect(User.Proxy.buildTo(Someone.address, TokenURI, [])).to.revertedWith(
-        'SafeOwnableUpgradeable: no enough confirms'
-      );
+      await expect(User.Proxy.buildTo(Someone.address, TokenURI, Nonce)).to.revertedWith('Elf: Insufficient deposits');
 
-      // Step 3: Buiuld ELF But the minter needs to own vm3
-      await expect(User.Proxy.buildTo(Someone.address, TokenURI, Sign)).to.revertedWith('Elf: Insufficient deposits');
+      // // Step 3: Buiuld ELF But the minter needs to own vm3
+      // await expect(User.Proxy.buildTo(Someone.address, TokenURI, Nonce)).to.revertedWith('Elf: Insufficient deposits');
 
       // Step 4: Deposit VM3 to self
       await expect(User.Proxy.deposit(TenVM3.mul(2)))
         .to.emit(Proxy, 'Deposit')
         .withArgs(User.address, TenVM3.mul(2));
 
-      // Step 5: Buiuld ELF
-      await expect(User.Proxy.buildTo(Someone.address, TokenURI, Sign))
+      // // Step 5: Buiuld ELF
+      await Administrator1.Proxy.AddOpHashToPending(
+        web3.utils.hexToBytes(await Proxy.HashToSign(await Proxy.getBuildHash(Someone.address, TokenURI, Nonce))),
+        Sign
+      );
+      await expect(User.Proxy.buildTo(Someone.address, TokenURI, Nonce))
         .to.emit(Proxy, 'Build')
         .withArgs(Someone.address, 0);
 
-      // Step 6: Try to use the last signature and get an error
-      await expect(User.Proxy.buildTo(Someone.address, TokenURI, Sign)).to.revertedWith(
-        'SafeOwnableUpgradeable: signer is not owner'
+      // // Step 6: Try to use the last signature and get an error
+      await expect(User.Proxy.buildTo(Someone.address, TokenURI, Nonce)).to.revertedWith(
+        'SafeOwnableUpgradeable: operation not in pending'
       );
 
       // Step 7: Buiuld again
-      const BuildHash2 = web3.utils.hexToBytes(await Proxy.getBuildHash(Someone.address, TokenURI, Proxy.nonce()));
+      const Nonce2 = 1;
+      const BuildHash2 = web3.utils.hexToBytes(await Proxy.getBuildHash(Someone.address, TokenURI, Nonce2));
       const Sig1_2 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(BuildHash2));
       const Sig2_2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(BuildHash2));
       const Sign2 = [Sig1_2, Sig2_2];
-      await expect(User.Proxy.buildTo(Someone.address, TokenURI, Sign2))
+      await Administrator1.Proxy.AddOpHashToPending(
+        web3.utils.hexToBytes(await Proxy.HashToSign(await Proxy.getBuildHash(Someone.address, TokenURI, Nonce2))),
+        Sign2
+      );
+      await expect(User.Proxy.buildTo(Someone.address, TokenURI, Nonce2))
         .to.emit(Proxy, 'Build')
         .withArgs(Someone.address, 1);
 
-      // Step 8: Verify the ELS data
+      // // Step 8: Verify the ELS data
       expect(await Proxy.balanceOf(Someone.address)).to.be.eq(2);
       expect(await Proxy.tokenURI(0)).to.be.eq(TokenURI);
       expect(await Proxy.tokenURI(1)).to.be.eq(TokenURI);
@@ -188,31 +210,39 @@ describe('VM3Elf Token', () => {
 
       // Step 9: Verify refundAtDisposal for totalVM3
       // Step 9-1: Withdraw more than the amount at your disposal
-      const refundAtDisposalHash = web3.utils.hexToBytes(
-        await Proxy.getrefundAtDisposalHash(Administrator1.address, TenVM3.mul(5), Proxy.nonce())
+      const Nonce3 = 3;
+      // const refundAtDisposalHash = web3.utils.hexToBytes(
+      //   await Proxy.getrefundAtDisposalHash(Administrator1.address, TenVM3.mul(5), Nonce3)
+      // );
+      // const Sig1_3 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(refundAtDisposalHash));
+      // const Sig2_3 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(refundAtDisposalHash));
+      // const Sign3 = [Sig1_3, Sig2_3];
+      await expect(User.Proxy.refundAtDisposal(Someone.address, TenVM3.mul(5), Nonce3)).to.revertedWith(
+        'SafeOwnableUpgradeable: operation not in pending'
       );
-      const Sig1_3 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(refundAtDisposalHash));
-      const Sig2_3 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(refundAtDisposalHash));
-      const Sign3 = [Sig1_3, Sig2_3];
-      await expect(User.Proxy.refundAtDisposal(Someone.address, TenVM3.mul(5), Sign3)).to.revertedWith(
-        'SafeOwnableUpgradeable: signer is not owner'
-      );
-      await expect(User.Proxy.refundAtDisposal(Administrator1.address, TenVM3.mul(5), Sign3)).to.revertedWith(
-        'Elf: Insufficient atDisposal'
-      );
+      // await expect(User.Proxy.refundAtDisposal(Administrator1.address, TenVM3.mul(5), Nonce3)).to.revertedWith(
+      //   'Elf: Insufficient atDisposal'
+      // );
 
       // Step 9-2: Normal extraction
       const Disposal = TenVM3.mul(2);
+      const Nonce4 = 4;
       const refundAtDisposalHash2 = web3.utils.hexToBytes(
-        await Proxy.getrefundAtDisposalHash(Administrator1.address, Disposal, Proxy.nonce())
+        await Proxy.getrefundAtDisposalHash(Administrator1.address, Disposal, Nonce4)
       );
       const Sig1_4 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(refundAtDisposalHash2));
       const Sig2_4 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(refundAtDisposalHash2));
       const Sign4 = [Sig1_4, Sig2_4];
-      await expect(User.Proxy.refundAtDisposal(Administrator1.address, Disposal, Sign4)).to.revertedWith(
-        'SafeOwnableUpgradeable: caller is not the owner'
+      await expect(User.Proxy.refundAtDisposal(Administrator1.address, Disposal, Nonce4)).to.revertedWith(
+        'SafeOwnableUpgradeable: operation not in pending'
       );
-      await expect(Administrator1.Proxy.refundAtDisposal(Administrator1.address, Disposal, Sign4))
+      await Administrator1.Proxy.AddOpHashToPending(
+        web3.utils.hexToBytes(
+          await Proxy.HashToSign(await Proxy.getrefundAtDisposalHash(Administrator1.address, Disposal, Nonce4))
+        ),
+        Sign4
+      );
+      await expect(Administrator1.Proxy.refundAtDisposal(Administrator1.address, Disposal, Nonce4))
         .to.emit(Proxy, 'Refund')
         .withArgs(Administrator1.address, Disposal, true);
     });
@@ -278,12 +308,17 @@ describe('VM3Elf Token', () => {
       await User.Proxy.depositTo(U1.address, OnehundredVM3);
       await User.Proxy.depositTo(U2.address, OnehundredVM3);
 
-      const refundHash = web3.utils.hexToBytes(await Proxy.getRefundHash(U1.address, TenVM3, Proxy.nonce()));
+      const Nonce = 0;
+      const refundHash = web3.utils.hexToBytes(await Proxy.getRefundHash(U1.address, TenVM3, Nonce));
       const Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(refundHash));
       const Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(refundHash));
       const Sign = [Sig1, Sig2];
+      await Administrator1.Proxy.AddOpHashToPending(
+        web3.utils.hexToBytes(await Proxy.HashToSign(await Proxy.getRefundHash(U1.address, TenVM3, Nonce))),
+        Sign
+      );
 
-      await expect(Administrator1.Proxy.refund(U1.address, TenVM3, Sign))
+      await expect(Administrator1.Proxy.refund(U1.address, TenVM3, Nonce))
         .to.emit(Proxy, 'Refund')
         .withArgs(U1.address, TenVM3, false);
       expect(await VM3.balanceOf(U1.address)).to.be.eq(TenVM3);
