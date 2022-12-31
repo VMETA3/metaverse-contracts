@@ -79,7 +79,17 @@ contract Land is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnableU
         address to,
         uint256 nonce_
     ) public view returns (bytes32) {
-        return keccak256(abi.encodePacked(DOMAIN, keccak256("refund(address,uint256)"), tokenId, active, to, nonce_));
+        return
+            keccak256(
+                abi.encodePacked(
+                    DOMAIN,
+                    keccak256("injectActive(uint256,uint256,uint256)"),
+                    tokenId,
+                    active,
+                    to,
+                    nonce_
+                )
+            );
     }
 
     function getInjectActiveHashToSign(
