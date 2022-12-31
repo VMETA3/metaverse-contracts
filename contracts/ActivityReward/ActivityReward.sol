@@ -5,7 +5,6 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../Abstract/SafeOwnableUpgradeable.sol";
-import "hardhat/console.sol";
 
 contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
     IERC20 public VM3;
@@ -122,9 +121,8 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
     function injectReleaseReward(
         address receiver,
         uint256 amount,
-        bytes[] memory sigs,
-        uint256 nonce_
-    ) public onlyMultipleOwner(_hashToSign(injectReleaseRewardHash(receiver, amount, nonce_)), sigs) {
+        uint256 nonce
+    ) public onlyOperationPendding(_hashToSign(injectReleaseRewardHash(receiver, amount, nonce))) {
         if (release_reward.inserted[receiver]) {
             uint256 income = (release_reward.record[receiver].pool + amount) / 20;
             VM3.transferFrom(spender, receiver, income);
@@ -141,14 +139,6 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
         }
         emit InjectReleaseReward(receiver, amount);
     }
-
-    // function withdraw(
-    //     uint256 amount,
-    //     bytes[] memory sigs,
-    //     uint256 nonce_
-    // ) public onlyMultipleOwner(_hashToSign(withdrawHash(amount, nonce_)), sigs) {
-    //     VM3.transferFrom(spender, msg.sender, amount);
-    // }
 
     function _hashToSign(bytes32 data) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", data));
@@ -185,6 +175,14 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
                     nonce_
                 )
             );
+    }
+
+    function injectReleaseRewardHashToSign(
+        address receiver,
+        uint256 amount,
+        uint256 nonce_
+    ) public view returns (bytes32) {
+        return _hashToSign(injectReleaseRewardHash(receiver, amount, nonce_));
     }
 
     function withdrawHash(uint256 amount, uint256 nonce_) public view returns (bytes32) {
