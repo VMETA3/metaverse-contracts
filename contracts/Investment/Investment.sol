@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+// Open Zeppelin libraries for controlling upgradability and access.
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "../Abstract/SafeOwnableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract Investment is Ownable {
+contract Investment is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
+    bytes32 public DOMAIN;
     IERC20 interestToken;
     address interestAddr;
     uint256 private interestWarehouse;
@@ -40,23 +44,38 @@ contract Investment is Ownable {
     event Deposit(address account, uint256 amount);
     event Withdraw(address account, uint256 amount);
 
-    constructor(
+    // This approach is needed to prevent unauthorized upgrades because in UUPS mode, the upgrade is done from the implementation contract, while in the transparent proxy model, the upgrade is done through the proxy contract
+    function _authorizeUpgrade(address) internal override onlyOwner {}
+
+    function initialize(
+        string memory name,
+        address[] memory owners,
+        uint8 signRequred,
         address _interestToken,
         address _interestAddr,
         uint256 _activityStartTime,
         uint256 _activityEndTime
-    ) {
+    ) public initializer {
+        __Ownable_init(owners, signRequred);
+
         interestToken = IERC20(_interestToken);
         interestAddr = _interestAddr;
         activityStartTime = _activityStartTime;
         activityEndTime = _activityEndTime;
+
+        DOMAIN = keccak256(
+            abi.encode(
+                keccak256("Domain(string name,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes(name)),
+                block.chainid,
+                address(this)
+            )
+        );
     }
 
     function deposit(uint256 amount) public {
-        require(
-            block.timestamp > activityStartTime && block.timestamp < activityEndTime,
-            "Investment: The activity has not started or has ended"
-        );
+        require(block.timestamp > activityStartTime, "Investment: The activity has not started");
+        require(block.timestamp < activityEndTime, "Investment: The activity has ended");
 
         if (mapInvestor.inserted[msg.sender]) {
             uint256 len = mapInvestor.values[msg.sender].length;

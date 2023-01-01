@@ -1,14 +1,36 @@
 import {expect} from '../chai-setup';
-import {ethers, deployments, getUnnamedAccounts, getNamedAccounts, network} from 'hardhat';
+import {ethers, deployments, getUnnamedAccounts, getNamedAccounts, network, upgrades} from 'hardhat';
 import {Investment, TestERC20} from '../../typechain';
 import {setupUser, setupUsers} from '../utils';
+import {time} from '@nomicfoundation/hardhat-network-helpers';
+
+let startTime = 0;
+let endTime = 0;
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture('Investment');
-  const {deployer, interestAccount} = await getNamedAccounts();
+  const {deployer, interestAccount, Administrator2} = await getNamedAccounts();
+  const owners = [deployer, Administrator2];
+
+  const testToken = await ethers.getContract('TestERC20');
+
+  startTime = (await time.latest()) - 10;
+  endTime = (await time.latest()) + 24 * 60 * 60 * 1800;
+
+  const InvestmentFactory = await ethers.getContractFactory('Investment');
+  const Investment = await upgrades.deployProxy(InvestmentFactory, [
+    'DrawingGame',
+    owners,
+    2,
+    testToken.address,
+    interestAccount,
+    startTime,
+    endTime,
+  ]);
+
   const contracts = {
-    Investment: <Investment>await ethers.getContract('Investment'),
-    TestToken: <TestERC20>await ethers.getContract('TestERC20'),
+    Investment: <Investment>Investment,
+    TestToken: <TestERC20>testToken,
   };
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
   return {
@@ -36,9 +58,12 @@ const InvestmentLevelList = [
     WithdrawTimes: 18,
   },
 ];
-describe('Investment', () => {
+describe('Investment testing', () => {
   it('normal deposit and withdraw check', async () => {
     const {Investment, TestToken, deployer, users, interestAccount} = await setup();
+
+    expect(await Investment.activityEndTime()).to.be.eq(endTime);
+
     const testUser1 = users[4];
     const amount = OneVM3.mul(100);
     const amount2 = OneVM3.mul(1000);

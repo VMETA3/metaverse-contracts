@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
-import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+import "../Chainlink/VRFConsumerBaseV2Upgradeable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+// Open Zeppelin libraries for controlling upgradability and access.
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "../Abstract/SafeOwnableUpgradeable.sol";
 
 struct InvestmentAccount {
     address addr;
@@ -14,12 +17,6 @@ interface IInvestment {
 }
 
 interface IERC721 {
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) external;
-
     function transferFrom(
         address from,
         address to,
@@ -29,10 +26,12 @@ interface IERC721 {
     function ownerOf(uint256 tokenId) external view returns (address owner);
 }
 
-contract DrawingGame is VRFConsumerBaseV2, Ownable {
+contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VRFConsumerBaseV2Upgradeable {
     uint256 public constant SECONDS_FOR_WEEK = 60 * 60 * 24 * 7;
     uint256 public constant SECONDS_FOR_DAY = 60 * 60 * 24;
-    address public immutable investmentAddress;
+
+    address public investmentAddress;
+    bytes32 public DOMAIN;
 
     struct NFTInfo {
         address contractAddress;
@@ -45,13 +44,13 @@ contract DrawingGame is VRFConsumerBaseV2, Ownable {
 
     uint256 public distributedNFTs;
     uint256 public drawRounds; // how many round draw
-    uint256 public lastDrawTime = 0;
+    uint256 public lastDrawTime;
     mapping(address => uint256) public addressWeightMap;
 
     uint256 public startTime;
     uint256 public endTime;
 
-    event Draw(address indexed from, uint256 indexed time);
+    event Draw(address indexed from, uint256 indexed time, uint256 paticipantsNumber);
     event TakeOutNFT(address indexed from, address contractAddress, uint256 tokenId);
 
     //chainlink configure
@@ -59,8 +58,8 @@ contract DrawingGame is VRFConsumerBaseV2, Ownable {
     bytes32 public keyHash;
     uint32 public callbackGasLimit;
     VRFCoordinatorV2Interface COORDINATOR;
-    uint32 public numWords = 1;
-    uint16 requestConfirmations = 3;
+    uint32 public numWords;
+    uint16 requestConfirmations;
     //chainlink related parameter
     uint256 public lastRequestId;
     event RequestSent(uint256 requestId, uint32 numWords);
@@ -72,20 +71,42 @@ contract DrawingGame is VRFConsumerBaseV2, Ownable {
     }
     mapping(uint256 => RequestStatus) public requests; // requestId --> requestStatus
 
-    constructor(
+    // This approach is needed to prevent unauthorized upgrades because in UUPS mode, the upgrade is done from the implementation contract, while in the transparent proxy model, the upgrade is done through the proxy contract
+    function _authorizeUpgrade(address) internal override onlyOwner {}
+
+    function initialize(
+        string memory name,
+        address[] memory owners,
+        uint8 signRequred,
         address investmentAddress_,
         //chainlink config
         address vrfCoordinatorAddress_,
         uint32 callbackGasLimit_,
         uint64 subscribeId_,
         bytes32 keyHash_
-    ) VRFConsumerBaseV2(vrfCoordinatorAddress_) {
-        investmentAddress = investmentAddress_;
+    ) public initializer {
+        __VRFConsumerBaseV2_init(vrfCoordinatorAddress_);
+        __Ownable_init(owners, signRequred);
 
+        investmentAddress = investmentAddress_;
+        //chainlink
         callbackGasLimit = callbackGasLimit_;
         keyHash = keyHash_;
         subscriptionId = subscribeId_;
         COORDINATOR = VRFCoordinatorV2Interface(vrfCoordinatorAddress_);
+
+        lastDrawTime = 0;
+        numWords = 30;
+        requestConfirmations = 3;
+
+        DOMAIN = keccak256(
+            abi.encode(
+                keccak256("Domain(string name,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes(name)),
+                block.chainid,
+                address(this)
+            )
+        );
     }
 
     modifier checkDrawTime() {
@@ -93,30 +114,33 @@ contract DrawingGame is VRFConsumerBaseV2, Ownable {
         require(getWeekday(block.timestamp) == 0, "DrawingGame: only sunday can draw");
         require(getHourInDay(block.timestamp) == 9, "DrawingGame: only nince am can draw");
         require(getWeekday(block.timestamp - startTime) > 3, "DrawingGame: wait for next week");
-        require(block.timestamp - lastDrawTime > SECONDS_FOR_WEEK, "DrawingGame: has been drawn recently");
+        require(block.timestamp - lastDrawTime >= SECONDS_FOR_WEEK, "DrawingGame: has been drawn recently");
         _;
     }
 
     function depositNFTs(address[] memory contractAddresses, uint256[] memory tokenIds) external onlyOwner {
         require(contractAddresses.length == tokenIds.length);
         for (uint256 i = 0; i < contractAddresses.length; i++) {
+            NFTInfo memory nftInfo = NFTInfo(contractAddresses[i], tokenIds[i]);
             require(nftExistPrizePool[contractAddresses[i]][tokenIds[i]] == false, "DrawingGame: NFT added");
 
-            IERC721(contractAddresses[i]).transferFrom(address(this), address(this), tokenIds[i]);
+            IERC721(contractAddresses[i]).transferFrom(msg.sender, address(this), tokenIds[i]);
             nftExistPrizePool[contractAddresses[i]][tokenIds[i]] = true;
+
+            nfts.push(nftInfo);
         }
     }
 
-    function withdrawNFTs(uint256 toIndex) external onlyOwner {
+    function withdrawNFTs(uint256 amount, address recipient) external onlyOwner {
         require(nfts.length > distributedNFTs, "DrawingGame:no nfts left");
-        if (toIndex > nfts.length - 1) {
-            toIndex = nfts.length - 1;
-        }
 
-        for (uint256 i = toIndex; i > distributedNFTs; i--) {
-            NFTInfo storage nftInfo = nfts[i];
-            IERC721(nftInfo.contractAddress).safeTransferFrom(address(this), msg.sender, nftInfo.tokenId);
+        uint256 count = 0;
+        while (nfts.length > distributedNFTs && count < amount) {
+            NFTInfo storage nftInfo = nfts[nfts.length - 1];
+            IERC721(nftInfo.contractAddress).transferFrom(address(this), recipient, nftInfo.tokenId);
             nfts.pop();
+            nftExistPrizePool[nftInfo.contractAddress][nftInfo.tokenId] = false;
+            count++;
         }
     }
 
@@ -133,14 +157,16 @@ contract DrawingGame is VRFConsumerBaseV2, Ownable {
             distributedNFTs++;
         }
 
-        emit Draw(msg.sender, block.timestamp);
+        emit Draw(msg.sender, block.timestamp, winners.length);
     }
 
-    function _draw(uint256 seed) internal checkDrawTime {
+    function _draw(uint256[] memory randomNumbers) internal checkDrawTime {
         (address[] memory paticipants, uint256 totalWeight) = getParticipants();
         uint256 left = paticipants.length;
+        require(left > 0, "DrawingGame: no paticipants");
+
         for (uint256 i = 0; i < 30 && left > 0 && nfts.length > distributedNFTs; i++) {
-            uint256 num = seed % totalWeight;
+            uint256 num = randomNumbers[i] % totalWeight;
             (address addr, uint256 index) = whoWin(paticipants, num);
             wonNFT[addr] = nfts[distributedNFTs];
             totalWeight -= addressWeightMap[addr];
@@ -150,12 +176,11 @@ contract DrawingGame is VRFConsumerBaseV2, Ownable {
             nftExistPrizePool[wonNFT[addr].contractAddress][wonNFT[addr].tokenId] = false;
             distributedNFTs++;
             left--;
-            seed = uint256(keccak256(abi.encodePacked(seed)));
         }
 
         lastDrawTime = block.timestamp;
         drawRounds++;
-        emit Draw(msg.sender, block.timestamp);
+        emit Draw(msg.sender, block.timestamp, paticipants.length);
     }
 
     function takeOutNFT() external {
@@ -166,7 +191,7 @@ contract DrawingGame is VRFConsumerBaseV2, Ownable {
             "DrawingGame: you have taken nft"
         );
 
-        IERC721(nftInfo.contractAddress).safeTransferFrom(address(this), msg.sender, nftInfo.tokenId);
+        IERC721(nftInfo.contractAddress).transferFrom(address(this), msg.sender, nftInfo.tokenId);
         delete wonNFT[msg.sender];
         emit TakeOutNFT(msg.sender, nftInfo.contractAddress, nftInfo.tokenId);
     }
@@ -196,6 +221,10 @@ contract DrawingGame is VRFConsumerBaseV2, Ownable {
         }
 
         return (addressList, totalWeight);
+    }
+
+    function getTotalNFT() public view returns (uint256) {
+        return nfts.length;
     }
 
     function whoWin(address[] memory accounts, uint256 num) internal view returns (address, uint256) {
@@ -243,7 +272,7 @@ contract DrawingGame is VRFConsumerBaseV2, Ownable {
     }
 
     // chainlink
-    function requestRandomWordsForDraw() external onlyOwner returns (uint256 requestId) {
+    function requestRandomWordsForDraw() external checkDrawTime onlyOwner returns (uint256 requestId) {
         // Will revert if subscription is not set and funded.
         requestId = COORDINATOR.requestRandomWords(
             keyHash,
@@ -262,7 +291,7 @@ contract DrawingGame is VRFConsumerBaseV2, Ownable {
         require(requests[requestId_].exists, "DrawingGame: request not found");
         requests[requestId_].fulfilled = true;
         requests[requestId_].randomWords = randomWords_;
-        _draw(randomWords_[0]);
+        _draw(randomWords_);
         emit RequestFulfilled(requestId_, randomWords_);
     }
 }
