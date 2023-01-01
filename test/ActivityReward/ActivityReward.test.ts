@@ -61,7 +61,7 @@ describe('ActivityReward', () => {
     describe('Instant rewards', async () => {
         it('It should succeed in getFreeReward', async () => {
             const { possessor, users, Administrator1, Administrator2, ActivityReward, Proxy } = await setup();
-            const User = users[10];
+            const User = users[0];
             const nonce = 0;
             const OneVM3 = ethers.utils.parseEther("1");
             await possessor.VM3.transfer(Administrator1.address, OneVM3);
@@ -87,7 +87,7 @@ describe('ActivityReward', () => {
 
         it('It should succeed in getMultipleReward', async () => {
             const { possessor, users, Administrator1, Administrator2, ActivityReward, Proxy } = await setup();
-            const User = users[10];
+            const User = users[0];
             const nonce = 0;
             const OneVM3 = ethers.utils.parseEther("1");
             await possessor.VM3.transfer(Administrator1.address, OneVM3);
@@ -121,7 +121,7 @@ describe('ActivityReward', () => {
 
         it('The injection pool needs to be released once', async () => {
             const { possessor, Proxy, users, Administrator1, Administrator2 } = await setup();
-            const User = users[10];
+            const User = users[0];
             const nonce = 0;
             const OnehundredVM3 = ethers.utils.parseEther('100');
             const FiveVM3 = ethers.utils.parseEther('5');
@@ -149,11 +149,10 @@ describe('ActivityReward', () => {
 
         it('Release 10%', async () => {
             const { possessor, Proxy, users, Administrator1, Administrator2 } = await setup();
-            const User = users[10];
+            const User = users[0];
             const nonce = 0;
             const OnehundredVM3 = ethers.utils.parseEther('100');
-            const FiveVM3 = OnehundredVM3.div(20);
-            const NinetyPointFiveVM3 = OnehundredVM3.sub(5).div(10);
+            const NinetyPointFiveVM3 = ethers.utils.parseEther('9.5');
 
             await possessor.VM3.transfer(Administrator1.address, OnehundredVM3);
             await Administrator1.VM3.approve(Proxy.address, OnehundredVM3);
@@ -177,12 +176,13 @@ describe('ActivityReward', () => {
 
             // modify network block timestamp
             await network.provider.send('evm_increaseTime', [SecondsForMonth + 1]);
+            await Administrator1.VM3.approve(Proxy.address, OnehundredVM3);
             expect(await User.Proxy.checkReleased()).to.be.eq(NinetyPointFiveVM3);
         });
 
         it('When the number of releases is less than 5, release 5', async () => {
             const { possessor, Proxy, users, Administrator1, Administrator2 } = await setup();
-            const User = users[10];
+            const User = users[0];
             const nonce = 0;
             const FortyFiveVM3 = ethers.utils.parseEther('45');
             const FiveVM3 = ethers.utils.parseEther("5");
@@ -202,14 +202,16 @@ describe('ActivityReward', () => {
             await expect(User.Proxy.injectReleaseReward(User.address, FortyFiveVM3, nonce)).to.emit(Proxy, 'InjectReleaseReward').withArgs(User.address, FortyFiveVM3);
             // next month
             await network.provider.send('evm_increaseTime', [SecondsForMonth + 1]);
+            await Administrator1.VM3.approve(Proxy.address, FortyFiveVM3);
             expect(await User.Proxy.checkReleased()).to.be.eq(FiveVM3);
         });
 
         it('When the pool not enough 5, release all', async () => {
             const { possessor, Proxy, users, Administrator1, Administrator2 } = await setup();
-            const User = users[10];
+            const User = users[0];
             const nonce = 0;
             const fourVM3 = ethers.utils.parseEther("4");
+            const threePointEightVM3 = ethers.utils.parseEther("3.8");
 
             await possessor.VM3.transfer(Administrator1.address, fourVM3);
             await Administrator1.VM3.approve(Proxy.address, fourVM3);
@@ -227,7 +229,8 @@ describe('ActivityReward', () => {
             await expect(User.Proxy.injectReleaseReward(User.address, fourVM3, nonce)).to.emit(Proxy, 'InjectReleaseReward').withArgs(User.address, fourVM3);
             // next month
             await network.provider.send('evm_increaseTime', [SecondsForMonth + 1]);
-            expect(await User.Proxy.checkReleased()).to.be.eq(fourVM3);
+            await Administrator1.VM3.approve(Proxy.address, fourVM3);
+            expect(await User.Proxy.checkReleased()).to.be.eq(threePointEightVM3);
         });
     });
 });

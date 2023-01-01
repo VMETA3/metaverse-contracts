@@ -86,8 +86,14 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
             return 0;
         }
 
-        uint8 times = uint8((block.timestamp - release_reward.record[msg.sender].lastReleaseTime) / INTERVAL);
-        if (release_reward.record[msg.sender].pool < 5) {
+        uint8 times;
+        if (release_reward.record[msg.sender].lastReleaseTime == 0) {
+            times = uint8((block.timestamp - release_reward.record[msg.sender].firstInjectTime) / INTERVAL);
+        } else {
+            times = uint8((block.timestamp - release_reward.record[msg.sender].lastReleaseTime) / INTERVAL);
+        }
+
+        if (release_reward.record[msg.sender].pool < 5 * 10**18) {
             return release_reward.record[msg.sender].pool;
         }
 
