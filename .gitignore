@@ -27,3 +27,5 @@ deployments/localhost
 
 # upgrades
 /.openzeppelin/*-31337.json
+
+.idea
