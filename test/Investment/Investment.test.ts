@@ -19,7 +19,7 @@ const setup = deployments.createFixture(async () => {
 
   const InvestmentFactory = await ethers.getContractFactory('Investment');
   const Investment = await upgrades.deployProxy(InvestmentFactory, [
-    'DrawingGame',
+    'Investment',
     owners,
     2,
     testToken.address,
