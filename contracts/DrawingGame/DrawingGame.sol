@@ -110,12 +110,11 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
     }
 
     modifier checkDrawTime() {
+        require(startTime > 0 && block.timestamp > startTime, "DrawingGame: activity not start");
         require(block.timestamp < endTime, "DrawingGame: activity ended");
         require(getWeekday(block.timestamp) == 0, "DrawingGame: only sunday can draw");
         require(getHourInDay(block.timestamp) == 9, "DrawingGame: only nince am can draw");
-        if (block.timestamp - startTime < SECONDS_FOR_WEEK) {
-            require(getWeekday(block.timestamp - startTime) > 3, "DrawingGame: wait for next week");
-        }
+        require(block.timestamp - startTime > 3 * SECONDS_FOR_DAY, "DrawingGame: wait for next week");
         require(block.timestamp - lastDrawTime >= SECONDS_FOR_WEEK, "DrawingGame: has been drawn recently");
         _;
     }
