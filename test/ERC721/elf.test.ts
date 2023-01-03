@@ -81,7 +81,7 @@ describe('VM3Elf Token', () => {
     it('Deposit to self and build Elf', async () => {
       const {VM3, Proxy, OnehundredVM3, TenVM3, TokenURI, users, possessor, Administrator1, Administrator2} =
         await setup();
-      const User = users[10];
+      const User = users[7];
       const Nonce1 = 0;
       const BuildHash = web3.utils.hexToBytes(await Proxy.getBuildHash(User.address, TokenURI, Nonce1));
       const Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(BuildHash));
@@ -141,7 +141,7 @@ describe('VM3Elf Token', () => {
     it('Deposit to someone and build Elf', async () => {
       const {VM3, Proxy, OnehundredVM3, TenVM3, TokenURI, users, possessor, Administrator1, Administrator2} =
         await setup();
-      const User = users[10];
+      const User = users[7];
       const Someone = users[9];
       const Nonce = 0;
       const BuildHash = web3.utils.hexToBytes(await Proxy.getBuildHash(Someone.address, TokenURI, Nonce));
@@ -251,7 +251,7 @@ describe('VM3Elf Token', () => {
   describe('deposit and withdraw', async () => {
     it('Verify users deposit balance', async () => {
       const {VM3, Proxy, OnehundredVM3, TenVM3, users, possessor} = await setup();
-      const User = users[10];
+      const User = users[7];
       const Someone = users[9];
       await expect(possessor.VM3.transfer(User.address, OnehundredVM3.mul(10)))
         .to.emit(VM3, 'Transfer')
@@ -273,7 +273,7 @@ describe('VM3Elf Token', () => {
     });
     it('Verify users withdraw balance', async () => {
       const {VM3, Proxy, OnehundredVM3, TenVM3, users, possessor} = await setup();
-      const User = users[10];
+      const User = users[7];
       const U1 = users[9];
       const U2 = users[8];
       await possessor.VM3.transfer(User.address, OnehundredVM3.mul(10));
@@ -300,7 +300,7 @@ describe('VM3Elf Token', () => {
 
     it('Verify admin refund balance', async () => {
       const {VM3, Proxy, OnehundredVM3, TenVM3, Administrator1, Administrator2, users, possessor} = await setup();
-      const User = users[10];
+      const User = users[7];
       const U1 = users[9];
       const U2 = users[8];
       await possessor.VM3.transfer(User.address, OnehundredVM3.mul(10));
