@@ -5,6 +5,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 // Open Zeppelin libraries for controlling upgradability and access.
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {Time} from "../Lib/Time.sol";
 import "../Abstract/SafeOwnableUpgradeable.sol";
 
 struct InvestmentAccount {
@@ -49,6 +50,10 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
 
     uint256 public startTime;
     uint256 public endTime;
+
+    // Control timestamp
+    using Time for Time.Timestamp;
+    Time.Timestamp private _timestamp;
 
     event Draw(address indexed from, uint256 indexed time, uint256 paticipantsNumber);
     event TakeOutNFT(address indexed from, address contractAddress, uint256 tokenId);
@@ -110,12 +115,13 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
     }
 
     modifier checkDrawTime() {
-        require(startTime > 0 && block.timestamp > startTime, "DrawingGame: activity not start");
-        require(block.timestamp < endTime, "DrawingGame: activity ended");
-        require(getWeekday(block.timestamp) == 0, "DrawingGame: only sunday can draw");
-        require(getHourInDay(block.timestamp) == 9, "DrawingGame: only nince am can draw");
-        require(block.timestamp - startTime > 3 * SECONDS_FOR_DAY, "DrawingGame: wait for next week");
-        require(block.timestamp - lastDrawTime >= SECONDS_FOR_WEEK, "DrawingGame: has been drawn recently");
+        uint256 time = _timestamp._getCurrentTime();
+        require(startTime > 0 && time > startTime, "DrawingGame: activity not start");
+        require(time < endTime, "DrawingGame: activity ended");
+        require(getWeekday(time) == 0, "DrawingGame: only sunday can draw");
+        require(getHourInDay(time) == 9, "DrawingGame: only nince am can draw");
+        require(time - startTime > 3 * SECONDS_FOR_DAY, "DrawingGame: wait for next week");
+        require(time - lastDrawTime >= SECONDS_FOR_WEEK, "DrawingGame: has been drawn recently");
         _;
     }
 
@@ -158,7 +164,7 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
             distributedNFTs++;
         }
 
-        emit Draw(msg.sender, block.timestamp, winners.length);
+        emit Draw(msg.sender, _timestamp._getCurrentTime(), winners.length);
     }
 
     function _draw(uint256[] memory randomNumbers) internal checkDrawTime {
@@ -179,9 +185,9 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
             left--;
         }
 
-        lastDrawTime = block.timestamp;
+        lastDrawTime = _timestamp._getCurrentTime();
         drawRounds++;
-        emit Draw(msg.sender, block.timestamp, paticipants.length);
+        emit Draw(msg.sender, _timestamp._getCurrentTime(), paticipants.length);
     }
 
     function takeOutNFT() external {
@@ -268,7 +274,7 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
     }
 
     function setEndTime(uint256 endTime_) external onlyOwner {
-        require(endTime_ > block.timestamp);
+        require(endTime_ > _timestamp._getCurrentTime());
         endTime = endTime_;
     }
 
@@ -294,5 +300,13 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
         requests[requestId_].randomWords = randomWords_;
         _draw(randomWords_);
         emit RequestFulfilled(requestId_, randomWords_);
+    }
+
+    function setCurrentTime(uint256 timestamp_) external onlyOwner {
+        _timestamp._setCurrentTime(timestamp_);
+    }
+
+    function getCurrentTime() external view returns (uint256) {
+        return _timestamp._getCurrentTime();
     }
 }
