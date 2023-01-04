@@ -49,6 +49,14 @@ contract Investment is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
     event Deposit(address account, uint256 amount);
     event Withdraw(address account, uint256 amount);
 
+    bool internal locked;
+    modifier lock() {
+        require(!locked, "No re-entrancy");
+        locked = true;
+        _;
+        locked = false;
+    }
+
     // This approach is needed to prevent unauthorized upgrades because in UUPS mode, the upgrade is done from the implementation contract, while in the transparent proxy model, the upgrade is done through the proxy contract
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
@@ -199,7 +207,7 @@ contract Investment is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
         (, total) = _calculation_can_return_times();
     }
 
-    function withdraw() public {
+    function withdraw() public lock {
         (uint8[] memory times, uint256 amount) = _calculation_can_return_times();
         if (amount != 0) {
             interestToken.transferFrom(interestAddr, msg.sender, amount);
