@@ -5,7 +5,7 @@ import {setupUser, setupUsers} from '../utils';
 import web3 from 'web3';
 
 const Name = 'VMeta3 Land';
-const Symbol = 'VMTLAND';
+const Symbol = 'VM3LAND';
 const signRequired = 2;
 const TokenURI =
   '{"name":"elf 7","description":"this is the 7th elf!","price":"0.09","image":"https://gateway.pinata.cloud/ipfs/QmNzNDMzrVduVrQAvJrp8GwdifEKiQmY1gSfPbq12C8Mhy"}';
@@ -19,7 +19,7 @@ const setup = deployments.createFixture(async () => {
   const owners = [Administrator1, Administrator2];
 
   const Land = await ethers.getContractFactory('Land');
-  const LandProxy = await upgrades.deployProxy(Land, [chainId, 'VMeta3 Land', 'VMTLAND', owners, signRequired]);
+  const LandProxy = await upgrades.deployProxy(Land, [chainId, Name, Symbol, owners, signRequired]);
   await LandProxy.deployed();
 
   const contracts = {
