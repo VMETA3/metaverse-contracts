@@ -42,15 +42,6 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
         uint256 amount;
         uint256 tokenId; // Only used for Cards
     }
-    mapping(address => WinPrize[]) private winRecord;
-
-    bool internal locked;
-    modifier lock() {
-        require(!locked, "No re-entrancy");
-        locked = true;
-        _;
-        locked = false;
-    }
 
     //chainlink configure
     uint64 public subscriptionId;
@@ -69,7 +60,6 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
     event RequestSent(uint256 requestId, uint32 numWords);
     event RequestFulfilled(uint256 requestId, uint256[] randomWords);
     event Draw(address to, PrizeKind prizeKind, uint256 amount);
-    event WithdrawWin(address to, PrizeKind prizeKind, uint256 amount);
 
     // This approach is needed to prevent unauthorized upgrades because in UUPS mode, the upgrade is done from the implementation contract, while in the transparent proxy model, the upgrade is done through the proxy contract
     function _authorizeUpgrade(address) internal override onlyOwner {}
@@ -144,9 +134,19 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
 
     function _draw(uint256 requestId) internal {
         require(requests[requestId].randomWord > 0, "RaffleBag: The randomWords number cannot be 0");
-        WinPrize memory prize = _active_rule(requests[requestId].randomWord);
-        winRecord[requests[requestId].user].push(prize);
-        emit Draw(requests[requestId].user, prize.prizeKind, prize.amount);
+        WinPrize memory winPrize = _active_rule(requests[requestId].randomWord);
+
+        address userAddress = requests[requestId].user;
+        if (winPrize.prizeKind == PrizeKind.VM3) {
+            VM3.transferFrom(spender, userAddress, winPrize.amount);
+        }
+        if (winPrize.prizeKind == PrizeKind.BCard) {
+            BCard.safeTransferFrom(spender, userAddress, winPrize.tokenId);
+        }
+        if (winPrize.prizeKind == PrizeKind.CCard) {
+            CCard.safeTransferFrom(spender, userAddress, winPrize.tokenId);
+        }
+        emit Draw(userAddress, winPrize.prizeKind, winPrize.amount);
     }
 
     // Active gift package rule
@@ -159,12 +159,12 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
         WinPrize memory winPrize;
         uint256 num = random % totalWeight;
 
+        uint256 minimum = 0;
         for (uint256 i = 0; i < prizePool.length; i++) {
-            uint256 minimum = 0;
             if (i != 0) {
-                minimum = prizePool[i - 1].weight;
+                minimum += prizePool[i - 1].weight;
             }
-            if (num >= minimum && num < prizePool[i].weight) {
+            if (num >= minimum && num < prizePool[i].weight + minimum) {
                 winPrize.prizeKind = prizePool[i].prizeKind;
                 winPrize.amount = prizePool[i].amount;
             }
@@ -172,8 +172,8 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
 
         // If the prize is a BCard or a CCard, record tokenid and deduct a quantity
         if (winPrize.prizeKind == PrizeKind.BCard) {
-            winPrize.tokenId = totalNumberOfBCard;
             totalNumberOfBCard -= winPrize.amount;
+            winPrize.tokenId = totalNumberOfBCard;
 
             // Remove card from the prizePool
             if (totalNumberOfBCard == 0) {
@@ -181,8 +181,8 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
             }
         }
         if (winPrize.prizeKind == PrizeKind.CCard) {
-            winPrize.tokenId = totalNumberOfCCard;
             totalNumberOfCCard -= winPrize.amount;
+            winPrize.tokenId = totalNumberOfCCard;
 
             if (totalNumberOfCCard == 0) {
                 _removePrizePoolElement(1);
@@ -221,30 +221,5 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
         _draw(requestId_);
         requests[requestId_].fulfilled = true;
         emit RequestFulfilled(requestId_, randomWords_);
-    }
-
-    function checkWin() external view returns (WinPrize[] memory) {
-        return winRecord[msg.sender];
-    }
-
-    function withdrawWin() external lock {
-        for (uint256 i = 0; i < winRecord[msg.sender].length; i++) {
-            WinPrize memory prize = winRecord[msg.sender][i];
-            if (prize.prizeKind == PrizeKind.VM3) {
-                VM3.transferFrom(spender, msg.sender, prize.amount);
-                emit WithdrawWin(msg.sender, prize.prizeKind, prize.amount);
-            }
-            if (prize.prizeKind == PrizeKind.BCard) {
-                BCard.safeTransferFrom(spender, msg.sender, prize.tokenId);
-                emit WithdrawWin(msg.sender, prize.prizeKind, prize.amount);
-            }
-            if (prize.prizeKind == PrizeKind.CCard) {
-                CCard.safeTransferFrom(spender, msg.sender, prize.tokenId);
-                emit WithdrawWin(msg.sender, prize.prizeKind, prize.amount);
-            }
-            if (prize.prizeKind == PrizeKind.DCard) {
-                emit WithdrawWin(msg.sender, prize.prizeKind, prize.amount);
-            }
-        }
     }
 }
