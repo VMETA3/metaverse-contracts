@@ -68,13 +68,13 @@ describe('RaffleBag contract', function () {
       const nonce = 0;
       await Administrator1.Proxy.setChainlink(250000000, 1, ethers.constants.HashZero, 3);
 
-      const DrawHash = await Proxy.drawHash(nonce);
+      const DrawHash = await Proxy.drawHash(User.address, nonce);
       const DrawHashToBytes = web3.utils.hexToBytes(DrawHash);
       const Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(DrawHashToBytes));
       const Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(DrawHashToBytes));
 
       // Verify unauthorized transactions
-      await expect(User.Proxy.draw(nonce)).to.revertedWith(
+      await expect(User.Proxy.draw(User.address, nonce)).to.revertedWith(
         'SafeOwnableUpgradeable: operation not in pending'
       );
 
@@ -82,7 +82,7 @@ describe('RaffleBag contract', function () {
       await Administrator1.Proxy.AddOpHashToPending(sendHash, [Sig1, Sig2]);
 
       // draw
-      await User.Proxy.draw(nonce);
+      await User.Proxy.draw(User.address, nonce);
       expect(await VRFCoordinatorV2Mock.s_nextRequestId()).to.be.equal(2);
       const num = ethers.BigNumber.from('66412');
       await expect(VRFCoordinatorV2Mock.fulfillRandomWordsWithOverride(1, Proxy.address, [num]))
@@ -101,7 +101,7 @@ describe('RaffleBag contract', function () {
       // draw all BCard
       for (let i = 0; i < 6; i++) {
         const nonce = i;
-        const DrawHash = await Proxy.drawHash(nonce);
+        const DrawHash = await Proxy.drawHash(User.address, nonce);
         const DrawHashToBytes = web3.utils.hexToBytes(DrawHash);
         const Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(DrawHashToBytes));
         const Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(DrawHashToBytes));
@@ -109,7 +109,7 @@ describe('RaffleBag contract', function () {
         const sendHash = web3.utils.hexToBytes(await User.Proxy.HashToSign(DrawHash));
         await Administrator1.Proxy.AddOpHashToPending(sendHash, [Sig1, Sig2]);
 
-        await User.Proxy.draw(nonce);
+        await User.Proxy.draw(User.address, nonce);
 
         await VRFCoordinatorV2Mock.s_nextRequestId();
         const num = ethers.BigNumber.from('66412');
@@ -129,7 +129,7 @@ describe('RaffleBag contract', function () {
       // draw all CCard
       for (let i = 0; i < 15; i++) {
         const nonce = i;
-        const DrawHash = await Proxy.drawHash(nonce);
+        const DrawHash = await Proxy.drawHash(User.address, nonce);
         const DrawHashToBytes = web3.utils.hexToBytes(DrawHash);
         const Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(DrawHashToBytes));
         const Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(DrawHashToBytes));
@@ -137,7 +137,7 @@ describe('RaffleBag contract', function () {
         const sendHash = web3.utils.hexToBytes(await User.Proxy.HashToSign(DrawHash));
         await Administrator1.Proxy.AddOpHashToPending(sendHash, [Sig1, Sig2]);
 
-        await User.Proxy.draw(nonce);
+        await User.Proxy.draw(User.address, nonce);
 
         await VRFCoordinatorV2Mock.s_nextRequestId();
         const num = ethers.BigNumber.from('66417');
@@ -157,13 +157,13 @@ describe('RaffleBag contract', function () {
       const nonce = 0;
       await Administrator1.Proxy.setChainlink(250000000, 1, ethers.constants.HashZero, 3);
 
-      const DrawHash = await Proxy.drawHash(nonce);
+      const DrawHash = await Proxy.drawHash(User.address, nonce);
       const DrawHashToBytes = web3.utils.hexToBytes(DrawHash);
       const Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(DrawHashToBytes));
       const Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(DrawHashToBytes));
 
       // Verify unauthorized transactions
-      await expect(User.Proxy.draw(nonce)).to.revertedWith(
+      await expect(User.Proxy.draw(User.address, nonce)).to.revertedWith(
         'SafeOwnableUpgradeable: operation not in pending'
       );
 
@@ -171,7 +171,7 @@ describe('RaffleBag contract', function () {
       await Administrator1.Proxy.AddOpHashToPending(sendHash, [Sig1, Sig2]);
 
       // draw
-      await User.Proxy.draw(nonce);
+      await User.Proxy.draw(User.address, nonce);
 
       expect(await VRFCoordinatorV2Mock.s_nextRequestId()).to.be.equal(2);
       const num = ethers.BigNumber.from('96411');
@@ -183,7 +183,7 @@ describe('RaffleBag contract', function () {
 
       // withdraw 0.2VM3
       await possessor.VM3.approve(Proxy.address, ethers.utils.parseEther("0.2"));
-      
+
       await User.Proxy.withdrawWin();
       expect(await User.VM3.balanceOf(User.address)).to.be.equal(ethers.utils.parseEther("0.2"));
     })

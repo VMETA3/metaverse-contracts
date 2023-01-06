@@ -134,12 +134,12 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
         return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", data));
     }
 
-    function drawHash(uint256 nonce_) public view returns (bytes32) {
-        return keccak256(abi.encodePacked(DOMAIN, keccak256("drawHash(uint256)"), nonce_));
+    function drawHash(address to, uint256 nonce_) public view returns (bytes32) {
+        return keccak256(abi.encodePacked(DOMAIN, keccak256("drawHash(address,uint256)"), to, nonce_));
     }
 
-    function draw(uint256 nonce_) external onlyOperationPendding(HashToSign(drawHash(nonce_))) {
-        _randomNumber(msg.sender, 1);
+    function draw(address to, uint256 nonce_) external onlyOperationPendding(HashToSign(drawHash(to, nonce_))) {
+        _randomNumber(to, 1);
     }
 
     function _draw(uint256 requestId) internal {
