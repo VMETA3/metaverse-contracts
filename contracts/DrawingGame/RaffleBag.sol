@@ -159,7 +159,7 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
 
             // Remove null prize
             if (BCardTokenIds.length == 0) {
-                for (uint256 i = 0; i < prizePool.length; i) {
+                for (uint256 i = 0; i < prizePool.length; i++) {
                     if (prizePool[i].prizeKind == PrizeKind.BCard) {
                         _removePrizePoolElement(i);
                         break;
@@ -173,9 +173,9 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
 
             // Remove null prize
             if (CCardTokenIds.length == 0) {
-                for (uint256 i = 0; i < prizePool.length; i) {
+                for (uint256 i = 0; i < prizePool.length; i++) {
                     if (prizePool[i].prizeKind == PrizeKind.CCard) {
-                        _removePrizePoolElement(i);
+                        _removePrizePoolElement(1);
                         break;
                     }
                 }
