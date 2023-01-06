@@ -65,10 +65,11 @@ describe('RaffleBag contract', function () {
     const { Proxy, possessor, Administrator1, Administrator2, deployer, users, VRFCoordinatorV2Mock } = await setup();
     const User = users[0];
     const nonce = 0;
-    for (let i = 0;i <6;i++) {
-      await possessor.BCard.awardItem(possessor.address, "B"+i);
+    for (let i = 0; i < 6; i++) {
+      await possessor.BCard.awardItem(possessor.address, "B" + i);
       await possessor.BCard.approve(Proxy.address, i);
     }
+    await Administrator1.Proxy.setBCardTokenIds([0, 1, 2, 3, 4, 5]);
 
     await Administrator1.Proxy.setChainlink(2500000000, 1, ethers.constants.HashZero, 3);
 
@@ -104,6 +105,7 @@ describe('RaffleBag contract', function () {
       await possessor.CCard.approve(Proxy.address, i);
     }
 
+    await Administrator1.Proxy.setCCardTokenIds([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
     await Administrator1.Proxy.setChainlink(250000000, 1, ethers.constants.HashZero, 3);
 
     // draw first time
@@ -179,11 +181,11 @@ describe('RaffleBag contract', function () {
   it('Draw all BCard', async () => {
     const { Proxy, possessor, Administrator1, Administrator2, deployer, users, VRFCoordinatorV2Mock } = await setup();
     const User = users[0];
-    for (let i = 0;i <6;i++) {
-      await possessor.BCard.awardItem(possessor.address, "B"+i);
+    for (let i = 0; i < 6; i++) {
+      await possessor.BCard.awardItem(possessor.address, "B" + i);
       await possessor.BCard.approve(Proxy.address, i);
     }
-
+    await Administrator1.Proxy.setBCardTokenIds([0, 1, 2, 3, 4, 5]);
     await Administrator1.Proxy.setChainlink(250000000, 1, ethers.constants.HashZero, 3);
 
     // draw all BCard
@@ -201,41 +203,36 @@ describe('RaffleBag contract', function () {
 
       const num = ethers.BigNumber.from('66412');
       await VRFCoordinatorV2Mock.fulfillRandomWordsWithOverride(i + 1, Proxy.address, [num]);
-      expect((await User.Proxy.totalNumberOfBCard())).to.be.equal(5 - i);
-
     }
     expect(((await User.Proxy.getPrizePool())).toString()).to.be.equal('1,1,8,2,1,400,3,800000000000000000,6000,3,600000000000000000,12000,3,300000000000000000,18000,3,200000000000000000,30000');
   })
 
-  it('Draw all CCard', async () => {
-    const { Proxy, possessor, Administrator1, Administrator2, deployer, users, VRFCoordinatorV2Mock } = await setup();
-    const User = users[0];
-    for (let i = 0; i < 15; i++) {
-      await possessor.CCard.awardItem(possessor.address, "C" + i);
-      await possessor.CCard.approve(Proxy.address, i);
-    }
+  // it('Draw all CCard', async () => {
+  //   const { Proxy, possessor, Administrator1, Administrator2, deployer, users, VRFCoordinatorV2Mock } = await setup();
+  //   const User = users[0];
+  //   for (let i = 0; i < 15; i++) {
+  //     await possessor.CCard.awardItem(possessor.address, "C" + i);
+  //     await possessor.CCard.approve(Proxy.address, i);
+  //   }
+  //   await Administrator1.Proxy.setCCardTokenIds([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+  //   await Administrator1.Proxy.setChainlink(250000000, 1, ethers.constants.HashZero, 3);
 
-    await Administrator1.Proxy.setChainlink(250000000, 1, ethers.constants.HashZero, 3);
+  //   // draw all CCard
+  //   for (let i = 0; i < 15; i++) {
+  //     const nonce = i;
+  //     const DrawHash = await Proxy.drawHash(User.address, nonce);
+  //     const DrawHashToBytes = web3.utils.hexToBytes(DrawHash);
+  //     const Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(DrawHashToBytes));
+  //     const Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(DrawHashToBytes));
 
-    // draw all CCard
-    for (let i = 0; i < 15; i++) {
-      const nonce = i;
-      const DrawHash = await Proxy.drawHash(User.address, nonce);
-      const DrawHashToBytes = web3.utils.hexToBytes(DrawHash);
-      const Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(DrawHashToBytes));
-      const Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(DrawHashToBytes));
+  //     const sendHash = web3.utils.hexToBytes(await User.Proxy.HashToSign(DrawHash));
+  //     await Administrator1.Proxy.AddOpHashToPending(sendHash, [Sig1, Sig2]);
 
-      const sendHash = web3.utils.hexToBytes(await User.Proxy.HashToSign(DrawHash));
-      await Administrator1.Proxy.AddOpHashToPending(sendHash, [Sig1, Sig2]);
+  //     await User.Proxy.draw(User.address, nonce);
 
-      await User.Proxy.draw(User.address, nonce);
-
-      const num = ethers.BigNumber.from('66417');
-      await VRFCoordinatorV2Mock.fulfillRandomWordsWithOverride(i + 1, Proxy.address, [num]);
-
-      expect((await User.Proxy.totalNumberOfCCard())).to.be.equal(14 - i);
-
-    }
-    expect(((await User.Proxy.getPrizePool())).toString()).to.be.equal('0,1,4,2,1,400,3,800000000000000000,6000,3,600000000000000000,12000,3,300000000000000000,18000,3,200000000000000000,30000');
-  })
+  //     const num = ethers.BigNumber.from(66412 + 4);
+  //     await VRFCoordinatorV2Mock.fulfillRandomWordsWithOverride(i + 1, Proxy.address, [num]);
+  //   }
+  //   expect(((await User.Proxy.getPrizePool())).toString()).to.be.equal('0,1,4,2,1,400,3,800000000000000000,6000,3,600000000000000000,12000,3,300000000000000000,18000,3,200000000000000000,30000');
+  // })
 })

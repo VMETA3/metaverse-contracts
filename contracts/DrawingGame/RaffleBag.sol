@@ -21,9 +21,6 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
     IERC721 public CCard;
     bytes32 public DOMAIN;
 
-    uint256 public totalNumberOfBCard;
-    uint256 public totalNumberOfCCard;
-
     enum PrizeKind {
         BCard,
         CCard,
@@ -37,11 +34,8 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
     }
     Prize[] private prizePool;
 
-    struct WinPrize {
-        PrizeKind prizeKind;
-        uint256 amount;
-        uint256 tokenId; // Only used for Cards
-    }
+    uint256[] private BCardTokenIds;
+    uint256[] private CCardTokenIds;
 
     //chainlink configure
     uint64 public subscriptionId;
@@ -57,6 +51,13 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
     }
     mapping(uint256 => RequestStatus) public requests; // requestId --> requestStatus
 
+    bool internal locked;
+    modifier lock() {
+        require(!locked, "No re-entrancy");
+        locked = true;
+        _;
+        locked = false;
+    }
     event RequestSent(uint256 requestId, uint32 numWords);
     event RequestFulfilled(uint256 requestId, uint256[] randomWords);
     event Draw(address to, PrizeKind prizeKind, uint256 amount);
@@ -93,8 +94,6 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
     }
 
     function initPrizePool() private {
-        totalNumberOfBCard = 6;
-        totalNumberOfCCard = 15;
         prizePool.push(Prize(PrizeKind.BCard, 1, 4));
         prizePool.push(Prize(PrizeKind.CCard, 1, 8));
         prizePool.push(Prize(PrizeKind.DCard, 1, 400));
@@ -102,10 +101,6 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
         prizePool.push(Prize(PrizeKind.VM3, 6 * 10**17, 12000));
         prizePool.push(Prize(PrizeKind.VM3, 3 * 10**17, 18000));
         prizePool.push(Prize(PrizeKind.VM3, 2 * 10**17, 30000));
-    }
-
-    function getPrizePool() external view returns (Prize[] memory) {
-        return prizePool;
     }
 
     function setChainlink(
@@ -132,31 +127,14 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
         _randomNumber(to, 1);
     }
 
-    function _draw(uint256 requestId) internal {
-        require(requests[requestId].randomWord > 0, "RaffleBag: The randomWords number cannot be 0");
-        WinPrize memory winPrize = _active_rule(requests[requestId].randomWord);
-
-        address userAddress = requests[requestId].user;
-        if (winPrize.prizeKind == PrizeKind.VM3) {
-            VM3.transferFrom(spender, userAddress, winPrize.amount);
-        }
-        if (winPrize.prizeKind == PrizeKind.BCard) {
-            BCard.safeTransferFrom(spender, userAddress, winPrize.tokenId);
-        }
-        if (winPrize.prizeKind == PrizeKind.CCard) {
-            CCard.safeTransferFrom(spender, userAddress, winPrize.tokenId);
-        }
-        emit Draw(userAddress, winPrize.prizeKind, winPrize.amount);
-    }
-
     // Active gift package rule
-    function _active_rule(uint256 random) internal returns (WinPrize memory) {
+    function _active_rule(uint256 random) internal view returns (Prize memory) {
         uint256 totalWeight;
         for (uint256 i = 0; i < prizePool.length; i++) {
             totalWeight += prizePool[i].weight;
         }
 
-        WinPrize memory winPrize;
+        Prize memory winPrize;
         uint256 num = random % totalWeight;
 
         uint256 minimum = 0;
@@ -165,30 +143,53 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
                 minimum += prizePool[i - 1].weight;
             }
             if (num >= minimum && num < prizePool[i].weight + minimum) {
-                winPrize.prizeKind = prizePool[i].prizeKind;
-                winPrize.amount = prizePool[i].amount;
-            }
-        }
-
-        // If the prize is a BCard or a CCard, record tokenid and deduct a quantity
-        if (winPrize.prizeKind == PrizeKind.BCard) {
-            totalNumberOfBCard -= winPrize.amount;
-            winPrize.tokenId = totalNumberOfBCard;
-
-            // Remove card from the prizePool
-            if (totalNumberOfBCard == 0) {
-                _removePrizePoolElement(0);
-            }
-        }
-        if (winPrize.prizeKind == PrizeKind.CCard) {
-            totalNumberOfCCard -= winPrize.amount;
-            winPrize.tokenId = totalNumberOfCCard;
-
-            if (totalNumberOfCCard == 0) {
-                _removePrizePoolElement(1);
+                winPrize = prizePool[i];
             }
         }
         return winPrize;
+    }
+
+    function _withdraw_prize(address to, Prize memory prize) internal lock {
+        if (prize.prizeKind == PrizeKind.VM3) {
+            VM3.transferFrom(spender, to, prize.amount);
+        }
+        if (prize.prizeKind == PrizeKind.BCard) {
+            BCard.safeTransferFrom(spender, to, BCardTokenIds[BCardTokenIds.length - 1]);
+            BCardTokenIds.pop();
+
+            // Remove null prize
+            if (BCardTokenIds.length == 0) {
+                for (uint256 i = 0; i < prizePool.length; i) {
+                    if (prizePool[i].prizeKind == PrizeKind.BCard) {
+                        _removePrizePoolElement(i);
+                        break;
+                    }
+                }
+            }
+        }
+        if (prize.prizeKind == PrizeKind.CCard) {
+            CCard.safeTransferFrom(spender, to, CCardTokenIds[CCardTokenIds.length - 1]);
+            CCardTokenIds.pop();
+
+            // Remove null prize
+            if (CCardTokenIds.length == 0) {
+                for (uint256 i = 0; i < prizePool.length; i) {
+                    if (prizePool[i].prizeKind == PrizeKind.CCard) {
+                        _removePrizePoolElement(i);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    function _draw(uint256 requestId) internal {
+        require(requests[requestId].randomWord > 0, "RaffleBag: The randomWords number cannot be 0");
+        Prize memory winPrize = _active_rule(requests[requestId].randomWord);
+
+        address userAddress = requests[requestId].user;
+        _withdraw_prize(userAddress, winPrize);
+        emit Draw(userAddress, winPrize.prizeKind, winPrize.amount);
     }
 
     function _removePrizePoolElement(uint256 index) internal {
@@ -221,5 +222,53 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
         _draw(requestId_);
         requests[requestId_].fulfilled = true;
         emit RequestFulfilled(requestId_, randomWords_);
+    }
+
+    function setPrizePool(
+        PrizeKind prizeKind,
+        uint256 amount,
+        uint256 weight
+    ) external onlyOwner {
+        prizePool.push(Prize(prizeKind, amount, weight));
+    }
+
+    function setPrizePools(
+        PrizeKind[] calldata prizeKind,
+        uint256[] calldata amount,
+        uint256[] calldata weight
+    ) external onlyOwner {
+        require(
+            prizeKind.length == amount.length && amount.length == weight.length,
+            "RaffleBag: Incorrect number of arrays"
+        );
+        for (uint256 i = 0; i < amount.length; i++) {
+            prizePool.push(Prize(prizeKind[i], amount[i], weight[i]));
+        }
+    }
+
+    function cleanPrizePool() external onlyOwner {
+        for (uint256 i = 0; i < prizePool.length; i++) {
+            prizePool.pop();
+        }
+    }
+
+    function getPrizePool() external view returns (Prize[] memory) {
+        return prizePool;
+    }
+
+    function setBCardTokenIds(uint256[] memory tokenIds) external onlyOwner {
+        BCardTokenIds = tokenIds;
+    }
+
+    function getBCardTokenIds() external view returns (uint256[] memory) {
+        return BCardTokenIds;
+    }
+
+    function setCCardTokenIds(uint256[] memory tokenIds) external onlyOwner {
+        CCardTokenIds = tokenIds;
+    }
+
+    function getCCardTokenIds() external view returns (uint256[] memory) {
+        return CCardTokenIds;
     }
 }
