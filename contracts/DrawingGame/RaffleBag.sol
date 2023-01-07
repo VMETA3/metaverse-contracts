@@ -183,6 +183,9 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
             totalWeight += prizePool[i].weight;
         }
 
+        // Set a default value, at least no longer reward ranges
+        number = prizePool.length + 1;
+
         uint256 num = random % totalWeight;
 
         uint256 minimum = 0;
@@ -190,6 +193,7 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
             if (i != 0) minimum += prizePool[i - 1].weight;
             if (num >= minimum && num < prizePool[i].weight + minimum) number = i;
         }
+        require(number < prizePool.length, "RaffleBag: There is an error in taking random numbers");
         return number;
     }
 

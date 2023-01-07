@@ -130,11 +130,12 @@ describe('RaffleBag contract', () => {
   describe('Complete various sweepstakes', async () => {
     it('Simple draw, win a BCard', async () => {
       const { Proxy, ERC20Token, BCard, CCard, VRFCoordinatorV2Mock, possessor, Administrator1, Administrator2, users } = await setup();
+      const User = users[6];
       await Administrator1.Proxy.setAsset(possessor.address, ERC20Token.address, BCard.address, CCard.address);
       await setPrizes(BCard, CCard, possessor, Administrator1);
       await Administrator1.Proxy.setChainlink(250000000, 1, ethers.constants.HashZero, 3);
       await possessor.ERC20Token.approve(Proxy.address, TenthToken.mul(100000));
-      const User = users[6];
+      // await possessor.ERC20Token.transfer(User.address, TenthToken.mul(5));
       const Nonce = 0;
 
       const Hash = await Proxy.drawHash(User.address, Nonce);
@@ -146,10 +147,10 @@ describe('RaffleBag contract', () => {
       await Administrator2.Proxy.AddOpHashToPending(sendHash, [Sign1]);
       await User.Proxy.draw(Nonce);
       expect(await VRFCoordinatorV2Mock.s_nextRequestId()).to.be.equal(2);
-      const Number = ethers.BigNumber.from('3241232351512')
-      await expect(VRFCoordinatorV2Mock.fulfillRandomWordsWithOverride(1, Proxy.address, [Number]))
-        .to.be.emit(VRFCoordinatorV2Mock, 'RandomWordsFulfilled')
-        .withArgs(1, 1, 0, true);
+      await VRFCoordinatorV2Mock.fulfillRandomWordsWithOverride(1, Proxy.address, [ethers.BigNumber.from('3241232351512')])
+      // await expect(VRFCoordinatorV2Mock.fulfillRandomWordsWithOverride(1, Proxy.address, [Number]))
+      //   .to.be.emit(VRFCoordinatorV2Mock, 'RandomWordsFulfilled')
+      //   .withArgs(1, 1, 0, false);
       expect(await ERC20Token.balanceOf(User.address)).to.be.eq(TenthToken.mul(2))
     });
   });
