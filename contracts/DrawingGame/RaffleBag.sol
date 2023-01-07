@@ -268,7 +268,12 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
     }
 
     function _cleanPrizePool(uint256 number) private {
-        if (number != prizePool.length - 1) prizePool[number] = prizePool[number + 1];
+        uint256 last = prizePool.length - 1;
+        if (number != last) {
+            for (uint256 i = number; i < last; ++i) {
+                prizePool[i] = prizePool[i + 1];
+            }
+        }
         prizePool.pop();
     }
 

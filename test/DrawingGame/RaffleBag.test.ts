@@ -2,7 +2,6 @@ import { expect } from '../chai-setup';
 import { ethers, deployments, getUnnamedAccounts, getNamedAccounts, upgrades } from 'hardhat';
 import { setupUser, setupUsers } from '../utils';
 import { RaffleBag, VRFCoordinatorV2Mock, GameItem, VM3 } from '../../typechain';
-import { time } from '@nomicfoundation/hardhat-network-helpers';
 import web3 from 'web3';
 import { BigNumber, BigNumberish } from 'ethers';
 import { PromiseOrValue } from '../../typechain/common';
@@ -61,9 +60,9 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-
+//
 const setPrizes = async (BCard: { awardItem: (arg0: any, arg1: string) => any; }, CCard: { awardItem: (arg0: any, arg1: string) => any; }, possessor: { address: any; }, Administrator1: { Proxy: { setPrizes: (arg0: number[], arg1: (number | BigNumber)[], arg2: number[], arg3: PromiseOrValue<BigNumberish>[][]) => any; }; }) => {
-  const enumACard = 0
+  // const enumACard = 0
   const enumBCard = 1
   const enumCCard = 2
   const enumDCard = 3
@@ -131,7 +130,7 @@ describe('RaffleBag contract', () => {
   });
 
   describe('Complete various sweepstakes', async () => {
-    it('Simple draw, win a BCard', async () => {
+    it('Simple draw, win 0.2 VM3', async () => {
       const { Proxy, ERC20Token, ACard, BCard, CCard, VRFCoordinatorV2Mock, possessor, Administrator1, Administrator2, users } = await setup();
       const User = users[6];
       await Administrator1.Proxy.setAsset(possessor.address, ERC20Token.address, ACard.address, BCard.address, CCard.address);
@@ -155,10 +154,10 @@ describe('RaffleBag contract', () => {
       await expect(VRFCoordinatorV2Mock.fulfillRandomWordsWithOverride(1, Proxy.address, [Number]))
         .to.be.emit(VRFCoordinatorV2Mock, 'RandomWordsFulfilled')
         .withArgs(1, 1, 0, true);
-      expect(await ERC20Token.balanceOf(User.address)).to.be.eq(TenthToken.mul(2))
+      expect(await ERC20Token.balanceOf(User.address)).to.be.eq(TenthToken.mul(2));
     });
 
-    it('Draw 100 times', async () => {
+    it('Prize A is drawn and all are claimed, and Prize A does not exist in the prize pool', async () => {
       const { Proxy, ERC20Token, ACard, BCard, CCard, VRFCoordinatorV2Mock, possessor, Administrator1, Administrator2, users } = await setup();
       const User = users[6];
       await Administrator1.Proxy.setAsset(possessor.address, ERC20Token.address, ACard.address, BCard.address, CCard.address);
@@ -172,8 +171,8 @@ describe('RaffleBag contract', () => {
       const tokens: PromiseOrValue<BigNumberish>[][] = [];
       const ATokens = [];
       const BTokens = [];
-      const AC_Number = 10; // It is equivalent to infinity.
-      const BC_Number = 2;
+      const AC_Number = 2; // It is equivalent to infinity.
+      const BC_Number = 10;
       for (let i = 0; i < AC_Number; i++) {
         await ACard.awardItem(possessor.address, "This is a A-grade card");
         await possessor.ACard.approve(Proxy.address, i);
@@ -184,7 +183,7 @@ describe('RaffleBag contract', () => {
         await possessor.BCard.approve(Proxy.address, i);
         BTokens.push(i);
       }
-      
+
       tokens[0] = ATokens;
       tokens[1] = [];
       tokens[2] = BTokens;
@@ -192,6 +191,10 @@ describe('RaffleBag contract', () => {
 
       // SetChainlink
       await Administrator1.Proxy.setChainlink(250000000, 1, ethers.constants.HashZero, 3);
+
+      // Before the draw, the prize with 0 in the prize pool is prize A
+      let PrizePool = await Proxy.getPrizePool();
+      expect(PrizePool[0].prizeKind).to.be.eq(enumACard);
 
       // Loop
       for (let i = 0; i < 2; i++) {
@@ -204,12 +207,17 @@ describe('RaffleBag contract', () => {
         // When the caller is an administrator himself, it is not necessary to pass in the administrator's signature
         await Administrator2.Proxy.AddOpHashToPending(sendHash, [Sign1]);
         await User.Proxy.draw(Nonce);
-        await VRFCoordinatorV2Mock.fulfillRandomWordsWithOverride(i + 1, Proxy.address, [5010 + 11]);
+
+        // The maximum weight is 5010, and the remaining number 5011 passed in gets 1, and the prize is A
+        const Number = ethers.BigNumber.from('5011');
+        await VRFCoordinatorV2Mock.fulfillRandomWordsWithOverride(i + 1, Proxy.address, [Number]);
       }
 
-      // expect(await BCard.balanceOf(User.address)).to.be.eq(2);
-      // expect((await Proxy.getPrizePool()).length).to.be.eq(2);
-
+      // After the draw, prize A is drawn, and the subscript 0 is replaced with prize C
+      PrizePool = await Proxy.getPrizePool();
+      expect(PrizePool.length).to.be.eq(2);
+      expect(PrizePool[0].prizeKind).to.be.eq(enumDCard);
+      expect(PrizePool[1].prizeKind).to.be.eq(enumBCard);
     });
   });
 });
