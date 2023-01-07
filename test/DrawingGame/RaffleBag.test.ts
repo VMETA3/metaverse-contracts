@@ -15,8 +15,9 @@ const setup = deployments.createFixture(async () => {
 
   // NFT
   const NFT = await ethers.getContractFactory('GameItem');
-  const BCard = await NFT.deploy();
-  const CCard = BCard;
+  const ACard = await NFT.deploy();
+  const BCard = ACard;
+  const CCard = ACard;
 
   const VRFCoordinatorV2MockFactory = await ethers.getContractFactory('VRFCoordinatorV2Mock');
   const VRFCoordinatorV2Mock = await VRFCoordinatorV2MockFactory.deploy(1, 1);
@@ -43,6 +44,7 @@ const setup = deployments.createFixture(async () => {
   const contracts = {
     VRFCoordinatorV2Mock: <VRFCoordinatorV2Mock>VRFCoordinatorV2Mock,
     Proxy: <RaffleBag>RaffleBagProxy,
+    ACard: <GameItem>ACard,
     BCard: <GameItem>BCard,
     CCard: <GameItem>CCard,
     ERC20Token: <VM3>ERC20Token,
@@ -61,10 +63,11 @@ const setup = deployments.createFixture(async () => {
 
 
 const setPrizes = async (BCard: { awardItem: (arg0: any, arg1: string) => any; }, CCard: { awardItem: (arg0: any, arg1: string) => any; }, possessor: { address: any; }, Administrator1: { Proxy: { setPrizes: (arg0: number[], arg1: (number | BigNumber)[], arg2: number[], arg3: PromiseOrValue<BigNumberish>[][]) => any; }; }) => {
-  const enumBCard = 0
-  const enumCCard = 1
-  const enumDCard = 2
-  const enumERC20Token = 3
+  const enumACard = 0
+  const enumBCard = 1
+  const enumCCard = 2
+  const enumDCard = 3
+  const enumERC20Token = 4
   const prizeKinds = [enumERC20Token, enumERC20Token, enumERC20Token, enumERC20Token, enumDCard, enumCCard, enumBCard];
   const amounts = [TenthToken.mul(2), TenthToken.mul(3), TenthToken.mul(6), TenthToken.mul(8), 0, 0, 0];
   const weights = [30000, 18000, 12000, 6000, 400, 8, 4];
@@ -104,8 +107,8 @@ const setPrizes = async (BCard: { awardItem: (arg0: any, arg1: string) => any; }
 describe('RaffleBag contract', () => {
   describe('Basic parameter settings', async () => {
     it('setAsset', async () => {
-      const { Proxy, ERC20Token, BCard, CCard, possessor, Administrator1 } = await setup();
-      await Administrator1.Proxy.setAsset(possessor.address, ERC20Token.address, BCard.address, CCard.address);
+      const { Proxy, ERC20Token, ACard, BCard, CCard, possessor, Administrator1 } = await setup();
+      await Administrator1.Proxy.setAsset(possessor.address, ERC20Token.address, ACard.address, BCard.address, CCard.address);
       expect(await Proxy.spender()).to.be.equal(possessor.address);
       expect(await Proxy.BCard()).to.be.equal(BCard.address);
       expect(await Proxy.CCard()).to.be.equal(CCard.address);
@@ -129,9 +132,9 @@ describe('RaffleBag contract', () => {
 
   describe('Complete various sweepstakes', async () => {
     it('Simple draw, win a BCard', async () => {
-      const { Proxy, ERC20Token, BCard, CCard, VRFCoordinatorV2Mock, possessor, Administrator1, Administrator2, users } = await setup();
+      const { Proxy, ERC20Token, ACard, BCard, CCard, VRFCoordinatorV2Mock, possessor, Administrator1, Administrator2, users } = await setup();
       const User = users[6];
-      await Administrator1.Proxy.setAsset(possessor.address, ERC20Token.address, BCard.address, CCard.address);
+      await Administrator1.Proxy.setAsset(possessor.address, ERC20Token.address, ACard.address, BCard.address, CCard.address);
       await setPrizes(BCard, CCard, possessor, Administrator1);
       await Administrator1.Proxy.setChainlink(250000000, 1, ethers.constants.HashZero, 3);
       await possessor.ERC20Token.approve(Proxy.address, TenthToken.mul(100000));
@@ -153,6 +156,60 @@ describe('RaffleBag contract', () => {
         .to.be.emit(VRFCoordinatorV2Mock, 'RandomWordsFulfilled')
         .withArgs(1, 1, 0, true);
       expect(await ERC20Token.balanceOf(User.address)).to.be.eq(TenthToken.mul(2))
+    });
+
+    it('Draw 100 times', async () => {
+      const { Proxy, ERC20Token, ACard, BCard, CCard, VRFCoordinatorV2Mock, possessor, Administrator1, Administrator2, users } = await setup();
+      const User = users[6];
+      await Administrator1.Proxy.setAsset(possessor.address, ERC20Token.address, ACard.address, BCard.address, CCard.address);
+      // SetPrizes
+      const enumACard = 0
+      const enumBCard = 1
+      const enumDCard = 3
+      const prizeKinds = [enumACard, enumDCard, enumBCard];
+      const amounts = [0, 0, 0];
+      const weights = [5, 5, 5000];
+      const tokens: PromiseOrValue<BigNumberish>[][] = [];
+      const ATokens = [];
+      const BTokens = [];
+      const AC_Number = 10; // It is equivalent to infinity.
+      const BC_Number = 2;
+      for (let i = 0; i < AC_Number; i++) {
+        await ACard.awardItem(possessor.address, "This is a A-grade card");
+        await possessor.ACard.approve(Proxy.address, i);
+        ATokens.push(i);
+      }
+      for (let i = 0; i < BC_Number; i++) {
+        await BCard.awardItem(possessor.address, "This is a B-grade card");
+        await possessor.BCard.approve(Proxy.address, i);
+        BTokens.push(i);
+      }
+      
+      tokens[0] = ATokens;
+      tokens[1] = [];
+      tokens[2] = BTokens;
+      await Administrator1.Proxy.setPrizes(prizeKinds, amounts, weights, tokens);
+
+      // SetChainlink
+      await Administrator1.Proxy.setChainlink(250000000, 1, ethers.constants.HashZero, 3);
+
+      // Loop
+      for (let i = 0; i < 2; i++) {
+        const Nonce = i;
+        const Hash = await Proxy.drawHash(User.address, Nonce);
+        const HashToBytes = web3.utils.hexToBytes(Hash);
+        const Sign1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(HashToBytes));
+        const sendHash = web3.utils.hexToBytes(await Proxy.HashToSign(Hash))
+        // Special emphasis!
+        // When the caller is an administrator himself, it is not necessary to pass in the administrator's signature
+        await Administrator2.Proxy.AddOpHashToPending(sendHash, [Sign1]);
+        await User.Proxy.draw(Nonce);
+        await VRFCoordinatorV2Mock.fulfillRandomWordsWithOverride(i + 1, Proxy.address, [5010 + 11]);
+      }
+
+      // expect(await BCard.balanceOf(User.address)).to.be.eq(2);
+      // expect((await Proxy.getPrizePool()).length).to.be.eq(2);
+
     });
   });
 });
