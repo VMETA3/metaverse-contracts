@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
@@ -256,7 +257,7 @@ contract VRFCoordinatorV2Mock is VRFCoordinatorV2Interface {
 
     function getConfig()
         external
-        view
+        pure
         returns (
             uint16 minimumRequestConfirmations,
             uint32 maxGasLimit,
@@ -269,7 +270,7 @@ contract VRFCoordinatorV2Mock is VRFCoordinatorV2Interface {
 
     function getFeeConfig()
         external
-        view
+        pure
         returns (
             uint32 fulfillmentFlatFeeLinkPPMTier1,
             uint32 fulfillmentFlatFeeLinkPPMTier2,
@@ -295,7 +296,7 @@ contract VRFCoordinatorV2Mock is VRFCoordinatorV2Interface {
         );
     }
 
-    function getFallbackWeiPerUnitLink() external view returns (int256) {
+    function getFallbackWeiPerUnitLink() external pure returns (int256) {
         return 4000000000000000; // 0.004 Ether
     }
 
