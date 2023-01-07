@@ -25,6 +25,31 @@
       "address": "0x8f95D4104b7E08dD954A7Cf9E6f5b78383FAb1d1",
       "txHash": "0xdadd39c2e21d0ca45256386c6b64f2bec5867ca5dbb1659208532338d0039600",
       "kind": "uups"
+    },
+    {
+      "address": "0xe3c6C97FD668877Ed9cFA4bd114D21872DdF91f2",
+      "txHash": "0xf79157f3a7ec2338dd9837068e881e0d88773ba8e8046b6f57d1aebd8cde964c",
+      "kind": "uups"
+    },
+    {
+      "address": "0x2914bbfA68d6BbCc0CD7bf3e61076a45Ec511A9D",
+      "txHash": "0xc1c44256cad59b227c6b9af6949890dc945048487c4cf944c71928f0f948d245",
+      "kind": "uups"
+    },
+    {
+      "address": "0xBEb7C2ECfFFA9A9f701A4578Fa56b43C5E0C9c17",
+      "txHash": "0x1d7e3d87651070898305f266ab768d94283580c86e8f2c5310a4afd9da861e3b",
+      "kind": "uups"
+    },
+    {
+      "address": "0xF5924f42f94157dD020C8334016FcBc2d60EC4bE",
+      "txHash": "0xd75703e6d07adc5f38940df9e8dd4876163ee89fc9ccda93bf93622e6be2d6ee",
+      "kind": "uups"
+    },
+    {
+      "address": "0x86adfdF3BA7288DAF4A7Ca7131bE7C6AcF4477B9",
+      "txHash": "0x7f909ab129dacd19b78f30d7b37a68d1d14a802c0147cfe78159357bc4ec2ed7",
+      "kind": "uups"
     }
   ],
   "impls": {
@@ -838,6 +863,379 @@
           "t_uint256": {
             "label": "uint256",
             "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "1dd89a486c40d0a6ed4e6299f9fbe604ee289967c8b4a72ef2a2863a0d10f2b2": {
+      "address": "0x5B888B98E9e60B6cC4d7f907D84eA11947EC1489",
+      "txHash": "0xe172741ff3c8616bf59c9c6e77c77ad219d2456dc99ec73c70e8afe1cb9c3488",
+      "layout": {
+        "solcVersion": "0.8.9",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ERC1967UpgradeUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/ERC1967/ERC1967UpgradeUpgradeable.sol:211"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "UUPSUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol:107"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owners",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_array(t_address)6_storage",
+            "contract": "SafeOwnableUpgradeable",
+            "src": "contracts/Abstract/SafeOwnableUpgradeable.sol:18"
+          },
+          {
+            "label": "_ownersIndex",
+            "offset": 0,
+            "slot": "157",
+            "type": "t_mapping(t_address,t_uint8)",
+            "contract": "SafeOwnableUpgradeable",
+            "src": "contracts/Abstract/SafeOwnableUpgradeable.sol:19"
+          },
+          {
+            "label": "_numOwners",
+            "offset": 0,
+            "slot": "158",
+            "type": "t_uint8",
+            "contract": "SafeOwnableUpgradeable",
+            "src": "contracts/Abstract/SafeOwnableUpgradeable.sol:20"
+          },
+          {
+            "label": "signRequired",
+            "offset": 1,
+            "slot": "158",
+            "type": "t_uint8",
+            "contract": "SafeOwnableUpgradeable",
+            "src": "contracts/Abstract/SafeOwnableUpgradeable.sol:23"
+          },
+          {
+            "label": "operationsStatus",
+            "offset": 0,
+            "slot": "159",
+            "type": "t_mapping(t_bytes32,t_enum(OpStatus)6845)",
+            "contract": "SafeOwnableUpgradeable",
+            "src": "contracts/Abstract/SafeOwnableUpgradeable.sol:24"
+          },
+          {
+            "label": "nonce",
+            "offset": 0,
+            "slot": "160",
+            "type": "t_uint256",
+            "contract": "SafeOwnableUpgradeable",
+            "src": "contracts/Abstract/SafeOwnableUpgradeable.sol:26"
+          },
+          {
+            "label": "vrfCoordinator",
+            "offset": 0,
+            "slot": "161",
+            "type": "t_address",
+            "contract": "VRFConsumerBaseV2Upgradeable",
+            "src": "contracts/Chainlink/VRFConsumerBaseV2Upgradeable.sol:101"
+          },
+          {
+            "label": "spender",
+            "offset": 0,
+            "slot": "162",
+            "type": "t_address",
+            "contract": "RaffleBag",
+            "src": "contracts/DrawingGame/RaffleBag.sol:20"
+          },
+          {
+            "label": "ERC20Token",
+            "offset": 0,
+            "slot": "163",
+            "type": "t_contract(IERC20)3681",
+            "contract": "RaffleBag",
+            "src": "contracts/DrawingGame/RaffleBag.sol:21"
+          },
+          {
+            "label": "ACard",
+            "offset": 0,
+            "slot": "164",
+            "type": "t_contract(IERC721Upgradeable)2250",
+            "contract": "RaffleBag",
+            "src": "contracts/DrawingGame/RaffleBag.sol:22"
+          },
+          {
+            "label": "BCard",
+            "offset": 0,
+            "slot": "165",
+            "type": "t_contract(IERC721Upgradeable)2250",
+            "contract": "RaffleBag",
+            "src": "contracts/DrawingGame/RaffleBag.sol:23"
+          },
+          {
+            "label": "CCard",
+            "offset": 0,
+            "slot": "166",
+            "type": "t_contract(IERC721Upgradeable)2250",
+            "contract": "RaffleBag",
+            "src": "contracts/DrawingGame/RaffleBag.sol:24"
+          },
+          {
+            "label": "DOMAIN",
+            "offset": 0,
+            "slot": "167",
+            "type": "t_bytes32",
+            "contract": "RaffleBag",
+            "src": "contracts/DrawingGame/RaffleBag.sol:25"
+          },
+          {
+            "label": "prizePool",
+            "offset": 0,
+            "slot": "168",
+            "type": "t_array(t_struct(Prize)11867_storage)dyn_storage",
+            "contract": "RaffleBag",
+            "src": "contracts/DrawingGame/RaffleBag.sol:40"
+          },
+          {
+            "label": "subscriptionId",
+            "offset": 0,
+            "slot": "169",
+            "type": "t_uint64",
+            "contract": "RaffleBag",
+            "src": "contracts/DrawingGame/RaffleBag.sol:43"
+          },
+          {
+            "label": "COORDINATOR",
+            "offset": 8,
+            "slot": "169",
+            "type": "t_contract(VRFCoordinatorV2Interface)153",
+            "contract": "RaffleBag",
+            "src": "contracts/DrawingGame/RaffleBag.sol:44"
+          },
+          {
+            "label": "keyHash",
+            "offset": 0,
+            "slot": "170",
+            "type": "t_bytes32",
+            "contract": "RaffleBag",
+            "src": "contracts/DrawingGame/RaffleBag.sol:45"
+          },
+          {
+            "label": "callbackGasLimit",
+            "offset": 0,
+            "slot": "171",
+            "type": "t_uint32",
+            "contract": "RaffleBag",
+            "src": "contracts/DrawingGame/RaffleBag.sol:46"
+          },
+          {
+            "label": "requestConfirmations",
+            "offset": 4,
+            "slot": "171",
+            "type": "t_uint16",
+            "contract": "RaffleBag",
+            "src": "contracts/DrawingGame/RaffleBag.sol:47"
+          },
+          {
+            "label": "requests",
+            "offset": 0,
+            "slot": "172",
+            "type": "t_mapping(t_uint256,t_struct(RequestStatus)11891_storage)",
+            "contract": "RaffleBag",
+            "src": "contracts/DrawingGame/RaffleBag.sol:54"
+          },
+          {
+            "label": "locked",
+            "offset": 0,
+            "slot": "173",
+            "type": "t_bool",
+            "contract": "RaffleBag",
+            "src": "contracts/DrawingGame/RaffleBag.sol:56"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_address)6_storage": {
+            "label": "address[6]",
+            "numberOfBytes": "192"
+          },
+          "t_array(t_struct(Prize)11867_storage)dyn_storage": {
+            "label": "struct RaffleBag.Prize[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_array(t_uint256)dyn_storage": {
+            "label": "uint256[]",
+            "numberOfBytes": "32"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_contract(IERC20)3681": {
+            "label": "contract IERC20",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IERC721Upgradeable)2250": {
+            "label": "contract IERC721Upgradeable",
+            "numberOfBytes": "20"
+          },
+          "t_contract(VRFCoordinatorV2Interface)153": {
+            "label": "contract VRFCoordinatorV2Interface",
+            "numberOfBytes": "20"
+          },
+          "t_enum(OpStatus)6845": {
+            "label": "enum SafeOwnableUpgradeable.OpStatus",
+            "members": [
+              "OpDefault",
+              "OpPending",
+              "OpExecuted",
+              "OpCancel"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_enum(PrizeKind)11856": {
+            "label": "enum RaffleBag.PrizeKind",
+            "members": [
+              "ACard",
+              "BCard",
+              "CCard",
+              "DCard",
+              "ERC20Token"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_uint8)": {
+            "label": "mapping(address => uint8)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_enum(OpStatus)6845)": {
+            "label": "mapping(bytes32 => enum SafeOwnableUpgradeable.OpStatus)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(RequestStatus)11891_storage)": {
+            "label": "mapping(uint256 => struct RaffleBag.RequestStatus)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(Prize)11867_storage": {
+            "label": "struct RaffleBag.Prize",
+            "members": [
+              {
+                "label": "prizeKind",
+                "type": "t_enum(PrizeKind)11856",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "amount",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "weight",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "tokens",
+                "type": "t_array(t_uint256)dyn_storage",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_struct(RequestStatus)11891_storage": {
+            "label": "struct RaffleBag.RequestStatus",
+            "members": [
+              {
+                "label": "user",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "randomWord",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "fulfilled",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "exists",
+                "type": "t_bool",
+                "offset": 1,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint32": {
+            "label": "uint32",
+            "numberOfBytes": "4"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
           },
           "t_uint8": {
             "label": "uint8",
