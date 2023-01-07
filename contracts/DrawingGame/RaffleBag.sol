@@ -19,11 +19,13 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
 
     address public spender;
     IERC20 public ERC20Token;
+    IERC721Upgradeable public ACard;
     IERC721Upgradeable public BCard;
     IERC721Upgradeable public CCard;
     bytes32 public DOMAIN;
 
     enum PrizeKind {
+        ACard,
         BCard,
         CCard,
         DCard,
@@ -87,6 +89,10 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
         ERC20Token = IERC20(token);
     }
 
+    function setACard(address aCard_) public onlyOwner {
+        ACard = IERC721Upgradeable(aCard_);
+    }
+
     function setBCard(address bCard_) public onlyOwner {
         BCard = IERC721Upgradeable(bCard_);
     }
@@ -98,11 +104,13 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
     function setAsset(
         address spender_,
         address token,
+        address aCard_,
         address bCard_,
         address cCard_
     ) external onlyOwner {
         setSpender(spender_);
         setERC20(token);
+        setACard(aCard_);
         setBCard(bCard_);
         setCCard(cCard_);
     }
@@ -207,7 +215,9 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
             ERC20Token.transferFrom(spender, to, value);
         } else if (prizePool[number].prizeKind != PrizeKind.DCard) {
             IERC721Upgradeable e;
-            if (prizePool[number].prizeKind == PrizeKind.BCard) {
+            if (prizePool[number].prizeKind == PrizeKind.ACard) {
+                e = ACard;
+            } else if (prizePool[number].prizeKind == PrizeKind.BCard) {
                 e = BCard;
             } else {
                 e = CCard;
