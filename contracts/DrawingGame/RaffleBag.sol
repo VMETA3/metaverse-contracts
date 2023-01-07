@@ -5,37 +5,37 @@ import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 // Open Zeppelin libraries for controlling upgradability and access.
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {Time} from "../Lib/Time.sol";
+import {IERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "../Abstract/SafeOwnableUpgradeable.sol";
 
 contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VRFConsumerBaseV2Upgradeable {
-    // Control timestamp
-    using Time for Time.Timestamp;
-    Time.Timestamp private _timestamp;
+    using SafeERC20Upgradeable for IERC20;
 
-    address private spender;
-    IERC20 public VM3;
-    IERC721 public BCard;
-    IERC721 public CCard;
+    event RequestSent(uint256 requestId, uint32 numWords);
+    event RequestFulfilled(uint256 requestId, uint256[] randomWords);
+    event Draw(address to, PrizeKind prizeKind, uint256 value);
+
+    address public spender;
+    IERC20 public ERC20Token;
+    IERC721Upgradeable public BCard;
+    IERC721Upgradeable public CCard;
     bytes32 public DOMAIN;
 
     enum PrizeKind {
         BCard,
         CCard,
         DCard,
-        VM3
+        ERC20Token
     }
     struct Prize {
         PrizeKind prizeKind;
         uint256 amount;
         uint256 weight;
+        uint256[] tokens;
     }
     Prize[] private prizePool;
-
-    uint256[] private BCardTokenIds;
-    uint256[] private CCardTokenIds;
 
     //chainlink configure
     uint64 public subscriptionId;
@@ -58,29 +58,15 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
         _;
         locked = false;
     }
-    event RequestSent(uint256 requestId, uint32 numWords);
-    event RequestFulfilled(uint256 requestId, uint256[] randomWords);
-    event Draw(address to, PrizeKind prizeKind, uint256 amount);
 
     // This approach is needed to prevent unauthorized upgrades because in UUPS mode, the upgrade is done from the implementation contract, while in the transparent proxy model, the upgrade is done through the proxy contract
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     function initialize(
-        address spender_,
-        address vm3_,
-        address bCard_,
-        address cCard_,
         address[] memory owners,
         uint8 signRequred,
         address vrfCoordinatorAddress_
     ) public initializer {
-        spender = spender_;
-        VM3 = IERC20(vm3_);
-        BCard = IERC721(bCard_);
-        CCard = IERC721(cCard_);
-
-        initPrizePool();
-
         __Ownable_init(owners, signRequred);
 
         __VRFConsumerBaseV2_init(vrfCoordinatorAddress_);
@@ -93,14 +79,69 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
         );
     }
 
-    function initPrizePool() private {
-        prizePool.push(Prize(PrizeKind.BCard, 1, 4));
-        prizePool.push(Prize(PrizeKind.CCard, 1, 8));
-        prizePool.push(Prize(PrizeKind.DCard, 1, 400));
-        prizePool.push(Prize(PrizeKind.VM3, 8 * 10**17, 6000));
-        prizePool.push(Prize(PrizeKind.VM3, 6 * 10**17, 12000));
-        prizePool.push(Prize(PrizeKind.VM3, 3 * 10**17, 18000));
-        prizePool.push(Prize(PrizeKind.VM3, 2 * 10**17, 30000));
+    function setSpender(address spender_) public onlyOwner {
+        spender = spender_;
+    }
+
+    function setERC20(address token) public onlyOwner {
+        ERC20Token = IERC20(token);
+    }
+
+    function setBCard(address bCard_) public onlyOwner {
+        BCard = IERC721Upgradeable(bCard_);
+    }
+
+    function setCCard(address cCard_) public onlyOwner {
+        CCard = IERC721Upgradeable(cCard_);
+    }
+
+    function setAsset(
+        address spender_,
+        address token,
+        address bCard_,
+        address cCard_
+    ) external onlyOwner {
+        setSpender(spender_);
+        setERC20(token);
+        setBCard(bCard_);
+        setCCard(cCard_);
+    }
+
+    function setPrize(
+        PrizeKind prizeKind_,
+        uint256 amount_,
+        uint256 weight_,
+        uint256[] memory tokens_
+    ) external onlyOwner {
+        _setPrizes(prizeKind_, amount_, weight_, tokens_);
+    }
+
+    function setPrizes(
+        PrizeKind[] memory prizeKinds_,
+        uint256[] memory amounts_,
+        uint256[] memory weights_,
+        uint256[][] memory tokensList_
+    ) external onlyOwner {
+        uint256 len = prizeKinds_.length;
+        require(
+            (prizeKinds_.length == len &&
+                amounts_.length == len &&
+                weights_.length == len &&
+                tokensList_.length == len),
+            "RaffleBag: length of the data is different"
+        );
+        for (uint256 i = 0; i < len; ++i) {
+            _setPrizes(prizeKinds_[i], amounts_[i], weights_[i], tokensList_[i]);
+        }
+    }
+
+    function _setPrizes(
+        PrizeKind prizeKind_,
+        uint256 amount_,
+        uint256 weight_,
+        uint256[] memory tokens_
+    ) private {
+        prizePool.push(Prize(prizeKind_, amount_, weight_, tokens_));
     }
 
     function setChainlink(
@@ -123,82 +164,60 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
         return keccak256(abi.encodePacked(DOMAIN, keccak256("drawHash(address,uint256)"), to, nonce_));
     }
 
-    function draw(address to, uint256 nonce_) external onlyOperationPendding(HashToSign(drawHash(to, nonce_))) {
+    function draw(uint256 nonce_) external {
+        _goDraw(_msgSender(), nonce_);
+    }
+
+    function drawTo(address to, uint256 nonce_) external {
+        _goDraw(to, nonce_);
+    }
+
+    function _goDraw(address to, uint256 nonce_) private onlyOperationPendding(HashToSign(drawHash(to, nonce_))) {
         _randomNumber(to, 1);
     }
 
     // Active gift package rule
-    function _active_rule(uint256 random) internal view returns (Prize memory) {
+    function _active_rule(uint256 random) internal view returns (uint256 number) {
         uint256 totalWeight;
-        for (uint256 i = 0; i < prizePool.length; i++) {
+        for (uint256 i = 0; i < prizePool.length; ++i) {
             totalWeight += prizePool[i].weight;
         }
 
-        Prize memory winPrize;
         uint256 num = random % totalWeight;
 
         uint256 minimum = 0;
-        for (uint256 i = 0; i < prizePool.length; i++) {
-            if (i != 0) {
-                minimum += prizePool[i - 1].weight;
-            }
-            if (num >= minimum && num < prizePool[i].weight + minimum) {
-                winPrize = prizePool[i];
-            }
+        for (uint256 i = 0; i < prizePool.length; ++i) {
+            if (i != 0) minimum += prizePool[i - 1].weight;
+            if (num >= minimum && num < prizePool[i].weight + minimum) number = i;
         }
-        return winPrize;
+        return number;
     }
 
-    function _withdraw_prize(address to, Prize memory prize) internal lock {
-        if (prize.prizeKind == PrizeKind.VM3) {
-            VM3.transferFrom(spender, to, prize.amount);
-        }
-        if (prize.prizeKind == PrizeKind.BCard) {
-            BCard.safeTransferFrom(spender, to, BCardTokenIds[BCardTokenIds.length - 1]);
-            BCardTokenIds.pop();
-
-            // Remove null prize
-            if (BCardTokenIds.length == 0) {
-                for (uint256 i = 0; i < prizePool.length; i++) {
-                    if (prizePool[i].prizeKind == PrizeKind.BCard) {
-                        _removePrizePoolElement(i);
-                        break;
-                    }
-                }
-            }
-        }
-        if (prize.prizeKind == PrizeKind.CCard) {
-            CCard.safeTransferFrom(spender, to, CCardTokenIds[CCardTokenIds.length - 1]);
-            CCardTokenIds.pop();
-
-            // Remove null prize
-            if (CCardTokenIds.length == 0) {
-                for (uint256 i = 0; i < prizePool.length; i++) {
-                    if (prizePool[i].prizeKind == PrizeKind.CCard) {
-                        _removePrizePoolElement(1);
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    function _draw(uint256 requestId) internal {
+    function _draw(uint256 requestId) internal lock {
         require(requests[requestId].randomWord > 0, "RaffleBag: The randomWords number cannot be 0");
-        Prize memory winPrize = _active_rule(requests[requestId].randomWord);
+        address to = requests[requestId].user;
+        uint256 number = _active_rule(requests[requestId].randomWord);
+        uint256 value;
+        if (prizePool[number].prizeKind == PrizeKind.ERC20Token) {
+            value = prizePool[number].amount;
+            ERC20Token.transferFrom(spender, to, value);
+        } else if (prizePool[number].prizeKind != PrizeKind.DCard) {
+            IERC721Upgradeable e;
+            if (prizePool[number].prizeKind == PrizeKind.BCard) {
+                e = BCard;
+            } else {
+                e = CCard;
+            }
 
-        address userAddress = requests[requestId].user;
-        _withdraw_prize(userAddress, winPrize);
-        emit Draw(userAddress, winPrize.prizeKind, winPrize.amount);
-    }
+            // Send the prize and remove it
+            value = prizePool[number].tokens[prizePool[number].tokens.length - 1];
+            e.safeTransferFrom(spender, to, value);
+            prizePool[number].tokens.pop();
 
-    function _removePrizePoolElement(uint256 index) internal {
-        if (index >= prizePool.length) return;
-
-        for (uint256 i = index; i < prizePool.length - 1; i++) {
-            prizePool[i] = prizePool[i + 1];
+            // Remove null prize
+            if (prizePool[number].tokens.length == 0) _cleanPrizePool(number);
         }
-        prizePool.pop();
+        emit Draw(to, prizePool[number].prizeKind, value);
     }
 
     function _randomNumber(address user, uint32 numWords) private returns (uint256 requestId) {
@@ -215,60 +234,31 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
         return requestId;
     }
 
-    function fulfillRandomWords(uint256 requestId_, uint256[] memory randomWords_) internal override {
+    function fulfillRandomWords(uint256 requestId_, uint256[] calldata randomWords_) internal override {
         require(requests[requestId_].exists, "RaffleBag: request not found");
         require(!requests[requestId_].fulfilled, "RaffleBag: request has been processed");
+        requests[requestId_].fulfilled = true;
         requests[requestId_].randomWord = randomWords_[0];
         _draw(requestId_);
-        requests[requestId_].fulfilled = true;
         emit RequestFulfilled(requestId_, randomWords_);
     }
 
-    function setPrizePool(
-        PrizeKind prizeKind,
-        uint256 amount,
-        uint256 weight
-    ) external onlyOwner {
-        prizePool.push(Prize(prizeKind, amount, weight));
+    function cleanPrizePool(uint256 number) external onlyOwner {
+        _cleanPrizePool(number);
     }
 
-    function setPrizePools(
-        PrizeKind[] calldata prizeKind,
-        uint256[] calldata amount,
-        uint256[] calldata weight
-    ) external onlyOwner {
-        require(
-            prizeKind.length == amount.length && amount.length == weight.length,
-            "RaffleBag: Incorrect number of arrays"
-        );
-        for (uint256 i = 0; i < amount.length; i++) {
-            prizePool.push(Prize(prizeKind[i], amount[i], weight[i]));
-        }
-    }
-
-    function cleanPrizePool() external onlyOwner {
-        for (uint256 i = 0; i < prizePool.length; i++) {
+    function cleanPrizePoolAll() external onlyOwner {
+        for (uint256 i = 0; i < prizePool.length; ++i) {
             prizePool.pop();
         }
     }
 
+    function _cleanPrizePool(uint256 number) private {
+        if (number != prizePool.length - 1) prizePool[number] = prizePool[number + 1];
+        prizePool.pop();
+    }
+
     function getPrizePool() external view returns (Prize[] memory) {
         return prizePool;
-    }
-
-    function setBCardTokenIds(uint256[] memory tokenIds) external onlyOwner {
-        BCardTokenIds = tokenIds;
-    }
-
-    function getBCardTokenIds() external view returns (uint256[] memory) {
-        return BCardTokenIds;
-    }
-
-    function setCCardTokenIds(uint256[] memory tokenIds) external onlyOwner {
-        CCardTokenIds = tokenIds;
-    }
-
-    function getCCardTokenIds() external view returns (uint256[] memory) {
-        return CCardTokenIds;
     }
 }
