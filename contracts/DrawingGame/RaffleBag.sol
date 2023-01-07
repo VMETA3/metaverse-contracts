@@ -238,7 +238,7 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
         return requestId;
     }
 
-    function fulfillRandomWords(uint256 requestId_, uint256[] calldata randomWords_) internal override {
+    function fulfillRandomWords(uint256 requestId_, uint256[] memory randomWords_) internal override {
         require(requests[requestId_].exists, "RaffleBag: request not found");
         require(!requests[requestId_].fulfilled, "RaffleBag: request has been processed");
         requests[requestId_].fulfilled = true;

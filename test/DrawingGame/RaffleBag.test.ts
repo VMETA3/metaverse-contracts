@@ -147,10 +147,11 @@ describe('RaffleBag contract', () => {
       await Administrator2.Proxy.AddOpHashToPending(sendHash, [Sign1]);
       await User.Proxy.draw(Nonce);
       expect(await VRFCoordinatorV2Mock.s_nextRequestId()).to.be.equal(2);
-      await VRFCoordinatorV2Mock.fulfillRandomWordsWithOverride(1, Proxy.address, [ethers.BigNumber.from('3241232351512')])
-      // await expect(VRFCoordinatorV2Mock.fulfillRandomWordsWithOverride(1, Proxy.address, [Number]))
-      //   .to.be.emit(VRFCoordinatorV2Mock, 'RandomWordsFulfilled')
-      //   .withArgs(1, 1, 0, false);
+      // await VRFCoordinatorV2Mock.fulfillRandomWordsWithOverride(1, Proxy.address, [ethers.BigNumber.from('3241232351512')]);
+      const Number = ethers.BigNumber.from('3241232351512');
+      await expect(VRFCoordinatorV2Mock.fulfillRandomWordsWithOverride(1, Proxy.address, [Number]))
+        .to.be.emit(VRFCoordinatorV2Mock, 'RandomWordsFulfilled')
+        .withArgs(1, 1, 0, true);
       expect(await ERC20Token.balanceOf(User.address)).to.be.eq(TenthToken.mul(2))
     });
   });
