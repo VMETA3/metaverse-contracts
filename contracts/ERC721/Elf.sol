@@ -215,4 +215,8 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
     function balanceOfERC20(address account) public view returns (uint256) {
         return _depositAmounts[account];
     }
+
+    function setERC20(address token) public onlyOwner {
+        ERC20Token = IERC20(token);
+    }
 }

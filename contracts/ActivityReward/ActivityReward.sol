@@ -289,4 +289,8 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
     function setSpender(address newSpender) external onlyOwner {
         spender = newSpender;
     }
+
+    function setERC20(address token) public onlyOwner {
+        ERC20Token = IERC20(token);
+    }
 }
