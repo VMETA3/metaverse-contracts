@@ -16,7 +16,7 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
     event RequestSent(uint256 requestId, uint32 numWords);
     event RequestFulfilled(uint256 requestId, uint256[] randomWords);
 
-    IERC20 public VM3;
+    IERC20 public ERC20Token;
     address private spender;
     bytes32 private DOMAIN;
     uint256 constant INTERVAL = 30 days;
@@ -60,14 +60,14 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
 
     // Upgradeable contracts should have an initialize method in place of the constructor, and the initializer keyword ensures that the contract is initialized only once
     function initialize(
-        address vm3_,
+        address token,
         address spender_,
         uint256 chainId,
         address[] memory owners,
         uint8 signRequred,
         address vrfCoordinatorAddress_
     ) public initializer {
-        VM3 = IERC20(vm3_);
+        ERC20Token = IERC20(token);
         spender = spender_;
 
         __Ownable_init(owners, signRequred);
@@ -109,7 +109,7 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
         private
         onlyOperationPendding(HashToSign(getFreeRewardHash(to, nonce_)))
     {
-        _rewardVM3(to, 5 * (10**17));
+        _rewardERC20(to, 5 * (10**17));
     }
 
     function getMultipleReward(uint256 nonce_) external {
@@ -124,7 +124,7 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
         private
         onlyOperationPendding(HashToSign(getMultipleRewardHash(to, nonce_)))
     {
-        VM3.transferFrom(to, address(this), 5 * (10**16));
+        ERC20Token.transferFrom(to, address(this), 5 * (10**16));
         _randomNumber(to, 1);
     }
 
@@ -154,11 +154,11 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
             multiple = 150;
         }
         uint256 reward = radix * multiple;
-        _rewardVM3(requests[requestId].user, reward);
+        _rewardERC20(requests[requestId].user, reward);
     }
 
-    function _rewardVM3(address to, uint256 reward) private lock {
-        VM3.transferFrom(spender, to, reward);
+    function _rewardERC20(address to, uint256 reward) private lock {
+        ERC20Token.transferFrom(spender, to, reward);
         emit GetReward(to, reward);
     }
 
@@ -202,7 +202,7 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
 
     function withdrawReleasedReward() public {
         uint256 amount = checkReleased();
-        VM3.transferFrom(spender, msg.sender, amount);
+        ERC20Token.transferFrom(spender, msg.sender, amount);
         release_reward.record[msg.sender].lastReleaseTime = block.timestamp;
         release_reward.record[msg.sender].pool -= amount;
         emit WithdrawReleasedReward(msg.sender, amount);
@@ -215,13 +215,13 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
     ) public onlyOperationPendding(HashToSign(injectReleaseRewardHash(receiver, amount, nonce))) {
         if (release_reward.inserted[receiver]) {
             uint256 income = (release_reward.record[receiver].pool + amount) / 20;
-            VM3.transferFrom(spender, receiver, income);
+            ERC20Token.transferFrom(spender, receiver, income);
             emit WithdrawReleasedReward(receiver, income);
 
             release_reward.record[receiver].pool += (amount - income);
         } else {
             uint256 income = amount / 20;
-            VM3.transferFrom(spender, receiver, income);
+            ERC20Token.transferFrom(spender, receiver, income);
             emit WithdrawReleasedReward(receiver, income);
 
             release_reward.record[receiver] = SlowlyReleaseReward(block.timestamp, 0, (amount - income));

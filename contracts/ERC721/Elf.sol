@@ -18,11 +18,11 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
     event Withdraw(address indexed user, uint256 amount);
     event Refund(address indexed user, uint256 amount, bool Disposal);
 
-    IERC20 public VM3;
+    IERC20 public ERC20Token;
     bytes32 private DOMAIN;
     uint256 private locked;
     uint256 private _tokenIdCounter;
-    uint256 private totalVM3;
+    uint256 private totalERC20Token;
     uint256 private _costs;
     uint256 private atDisposal;
     mapping(uint256 => string) private _tokenURIs;
@@ -48,14 +48,14 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
     // Upgradeable contracts should have an initialize method in place of the constructor, and the initializer keyword ensures that the contract is initialized only once
     function initialize(
         uint256 chainId,
-        address vm3_,
+        address token,
         uint256 costs_,
         string memory name_,
         string memory symbol_,
         address[] memory owners,
         uint8 signRequred
     ) public initializer {
-        VM3 = IERC20(vm3_);
+        ERC20Token = IERC20(token);
         _costs = costs_;
 
         __ERC721_init(name_, symbol_);
@@ -147,8 +147,8 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
 
     function _deposit(address to, uint256 amount) private {
         require(amount > 0, "Elf: Amount is zero");
-        VM3.transferFrom(_msgSender(), address(this), amount);
-        totalVM3 += amount;
+        ERC20Token.transferFrom(_msgSender(), address(this), amount);
+        totalERC20Token += amount;
         _depositAmounts[to] += amount;
         emit Deposit(to, amount);
     }
@@ -169,7 +169,7 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
         require(amount > 0, "Elf: amount is zero");
         require(_depositAmounts[from] >= amount, "Elf: Insufficient balance");
         _depositAmounts[from] -= amount;
-        VM3.transfer(to, amount);
+        ERC20Token.transfer(to, amount);
         emit Withdraw(to, amount);
     }
 
@@ -199,8 +199,8 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
         bool disposal
     ) private onlyOwner {
         require(amount > 0, "Elf: amount is zero");
-        require(VM3.balanceOf(address(this)) >= amount, "");
-        VM3.transfer(to, amount);
+        require(ERC20Token.balanceOf(address(this)) >= amount, "");
+        ERC20Token.transfer(to, amount);
         emit Refund(to, amount, disposal);
     }
 
@@ -212,7 +212,7 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
         return _costs;
     }
 
-    function balanceOfVM3(address account) public view returns (uint256) {
+    function balanceOfERC20(address account) public view returns (uint256) {
         return _depositAmounts[account];
     }
 }

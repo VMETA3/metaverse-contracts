@@ -1,21 +1,21 @@
 import {expect} from '../chai-setup';
 import {ethers, upgrades, deployments, getUnnamedAccounts, getNamedAccounts, network} from 'hardhat';
-import {VM3, VM3Elf} from '../../typechain';
+import {TestERC20, VM3Elf} from '../../typechain';
 import {setupUser, setupUsers} from '../utils';
 import web3 from 'web3';
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture('VM3Elf');
-  await deployments.fixture('VM3');
-  const {deployer, possessor, Administrator1, Administrator2} = await getNamedAccounts();
-  const OnehundredVM3 = ethers.BigNumber.from('100000000000000000000');
-  const TenVM3 = OnehundredVM3.div(10);
+  await deployments.fixture('TestERC20');
+  const {deployer, Administrator1, Administrator2} = await getNamedAccounts();
+  const OnehundredToken = ethers.BigNumber.from('100000000000000000000');
+  const TenToken = OnehundredToken.div(10);
 
   const Elf = await ethers.getContractFactory('VM3Elf');
-  const VM3 = await deployments.get('VM3'); // VMeta3 Token
+  const ERC20Token = await deployments.get('TestERC20'); // ERC20 Token
 
   const chainId = network.config.chainId; // chain id
-  const Costs = TenVM3; // Costs
+  const Costs = TenToken; // Costs
   const Name = 'VMeta3 Elf';
   const Symbol = 'VM3Elf';
   const signRequired = 2;
@@ -25,7 +25,7 @@ const setup = deployments.createFixture(async () => {
 
   const VM3ElfProxy = await upgrades.deployProxy(Elf, [
     chainId,
-    VM3.address,
+    ERC20Token.address,
     Costs,
     Name,
     Symbol,
@@ -35,7 +35,7 @@ const setup = deployments.createFixture(async () => {
   await VM3ElfProxy.deployed();
 
   const contracts = {
-    VM3: <VM3>await ethers.getContract('VM3'),
+    ERC20Token: <TestERC20>await ethers.getContract('TestERC20'),
     Elf: <VM3Elf>await ethers.getContract('VM3Elf'),
     Proxy: <VM3Elf>VM3ElfProxy,
   };
@@ -46,14 +46,13 @@ const setup = deployments.createFixture(async () => {
     users,
     Administrator1: await setupUser(Administrator1, contracts),
     Administrator2: await setupUser(Administrator2, contracts),
-    possessor: await setupUser(possessor, contracts),
     deployer: await setupUser(deployer, contracts),
     Name: Name,
     Symbol: Symbol,
     TokenURI: TokenURI,
     Costs: Costs,
-    OnehundredVM3: OnehundredVM3,
-    TenVM3: TenVM3,
+    OnehundredToken: OnehundredToken,
+    TenToken: TenToken,
   };
 });
 
@@ -79,7 +78,7 @@ describe('VM3Elf Token', () => {
 
   describe('complete casting process', async () => {
     it('Deposit to self and build Elf', async () => {
-      const {VM3, Proxy, OnehundredVM3, TenVM3, TokenURI, users, possessor, Administrator1, Administrator2} =
+      const {ERC20Token, Proxy, OnehundredToken, TenToken, TokenURI, users, deployer, Administrator1, Administrator2} =
         await setup();
       const User = users[7];
       const Nonce1 = 0;
@@ -88,18 +87,18 @@ describe('VM3Elf Token', () => {
       const Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(BuildHash));
       const Sign = [Sig1, Sig2];
 
-      // Step 1: Deposit VM3
-      await expect(possessor.VM3.transfer(User.address, OnehundredVM3))
-        .to.emit(VM3, 'Transfer')
-        .withArgs(possessor.address, User.address, OnehundredVM3);
+      // Step 1: Deposit ERC20Token
+      await expect(deployer.ERC20Token.transfer(User.address, OnehundredToken))
+        .to.emit(ERC20Token, 'Transfer')
+        .withArgs(deployer.address, User.address, OnehundredToken);
 
-      await expect(User.VM3.approve(Proxy.address, OnehundredVM3))
-        .to.emit(VM3, 'Approval')
-        .withArgs(User.address, Proxy.address, OnehundredVM3);
+      await expect(User.ERC20Token.approve(Proxy.address, OnehundredToken))
+        .to.emit(ERC20Token, 'Approval')
+        .withArgs(User.address, Proxy.address, OnehundredToken);
 
-      await expect(User.Proxy.deposit(TenVM3.mul(2)))
+      await expect(User.Proxy.deposit(TenToken.mul(2)))
         .to.emit(Proxy, 'Deposit')
-        .withArgs(User.address, TenVM3.mul(2));
+        .withArgs(User.address, TenToken.mul(2));
 
       // Step 2: Verify unauthorized transactions
       await expect(User.Proxy.build(TokenURI, Nonce1)).to.revertedWith(
@@ -139,7 +138,7 @@ describe('VM3Elf Token', () => {
     });
 
     it('Deposit to someone and build Elf', async () => {
-      const {VM3, Proxy, OnehundredVM3, TenVM3, TokenURI, users, possessor, Administrator1, Administrator2} =
+      const {ERC20Token, Proxy, OnehundredToken, TenToken, TokenURI, users, deployer, Administrator1, Administrator2} =
         await setup();
       const User = users[7];
       const Someone = users[9];
@@ -149,29 +148,29 @@ describe('VM3Elf Token', () => {
       const Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(BuildHash));
       const Sign = [Sig1, Sig2];
 
-      // Step 1: Deposit VM3
-      await expect(possessor.VM3.transfer(User.address, OnehundredVM3))
-        .to.emit(VM3, 'Transfer')
-        .withArgs(possessor.address, User.address, OnehundredVM3);
+      // Step 1: Deposit ERC20Token
+      await expect(deployer.ERC20Token.transfer(User.address, OnehundredToken))
+        .to.emit(ERC20Token, 'Transfer')
+        .withArgs(deployer.address, User.address, OnehundredToken);
 
-      await expect(User.VM3.approve(Proxy.address, OnehundredVM3))
-        .to.emit(VM3, 'Approval')
-        .withArgs(User.address, Proxy.address, OnehundredVM3);
+      await expect(User.ERC20Token.approve(Proxy.address, OnehundredToken))
+        .to.emit(ERC20Token, 'Approval')
+        .withArgs(User.address, Proxy.address, OnehundredToken);
 
-      await expect(User.Proxy.depositTo(Someone.address, TenVM3.mul(2)))
+      await expect(User.Proxy.depositTo(Someone.address, TenToken.mul(2)))
         .to.emit(Proxy, 'Deposit')
-        .withArgs(Someone.address, TenVM3.mul(2));
+        .withArgs(Someone.address, TenToken.mul(2));
 
       // Step 2: Verify unauthorized transactions
       await expect(User.Proxy.buildTo(Someone.address, TokenURI, Nonce)).to.revertedWith('Elf: Insufficient deposits');
 
-      // // Step 3: Buiuld ELF But the minter needs to own vm3
+      // // Step 3: Buiuld ELF But the minter needs to own ERC20Token
       // await expect(User.Proxy.buildTo(Someone.address, TokenURI, Nonce)).to.revertedWith('Elf: Insufficient deposits');
 
-      // Step 4: Deposit VM3 to self
-      await expect(User.Proxy.deposit(TenVM3.mul(2)))
+      // Step 4: Deposit ERC20Token to self
+      await expect(User.Proxy.deposit(TenToken.mul(2)))
         .to.emit(Proxy, 'Deposit')
-        .withArgs(User.address, TenVM3.mul(2));
+        .withArgs(User.address, TenToken.mul(2));
 
       // // Step 5: Buiuld ELF
       await Administrator1.Proxy.AddOpHashToPending(
@@ -208,24 +207,24 @@ describe('VM3Elf Token', () => {
       expect(await Proxy.ownerOf(0)).to.be.eq(Someone.address);
       expect(await Proxy.ownerOf(1)).to.be.eq(Someone.address);
 
-      // Step 9: Verify refundAtDisposal for totalVM3
+      // Step 9: Verify refundAtDisposal for totalERC20Token
       // Step 9-1: Withdraw more than the amount at your disposal
       const Nonce3 = 3;
       // const refundAtDisposalHash = web3.utils.hexToBytes(
-      //   await Proxy.getrefundAtDisposalHash(Administrator1.address, TenVM3.mul(5), Nonce3)
+      //   await Proxy.getrefundAtDisposalHash(Administrator1.address, TenToken.mul(5), Nonce3)
       // );
       // const Sig1_3 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(refundAtDisposalHash));
       // const Sig2_3 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(refundAtDisposalHash));
       // const Sign3 = [Sig1_3, Sig2_3];
-      await expect(User.Proxy.refundAtDisposal(Someone.address, TenVM3.mul(5), Nonce3)).to.revertedWith(
+      await expect(User.Proxy.refundAtDisposal(Someone.address, TenToken.mul(5), Nonce3)).to.revertedWith(
         'SafeOwnableUpgradeable: operation not in pending'
       );
-      // await expect(User.Proxy.refundAtDisposal(Administrator1.address, TenVM3.mul(5), Nonce3)).to.revertedWith(
+      // await expect(User.Proxy.refundAtDisposal(Administrator1.address, TenToken.mul(5), Nonce3)).to.revertedWith(
       //   'Elf: Insufficient atDisposal'
       // );
 
       // Step 9-2: Normal extraction
-      const Disposal = TenVM3.mul(2);
+      const Disposal = TenToken.mul(2);
       const Nonce4 = 4;
       const refundAtDisposalHash2 = web3.utils.hexToBytes(
         await Proxy.getrefundAtDisposalHash(Administrator1.address, Disposal, Nonce4)
@@ -250,79 +249,79 @@ describe('VM3Elf Token', () => {
 
   describe('deposit and withdraw', async () => {
     it('Verify users deposit balance', async () => {
-      const {VM3, Proxy, OnehundredVM3, TenVM3, users, possessor} = await setup();
-      const User = users[7];
+      const {ERC20Token, Proxy, OnehundredToken, TenToken, users, deployer} = await setup();
+      const User = users[8];
       const Someone = users[9];
-      await expect(possessor.VM3.transfer(User.address, OnehundredVM3.mul(10)))
-        .to.emit(VM3, 'Transfer')
-        .withArgs(possessor.address, User.address, OnehundredVM3.mul(10));
+      await expect(deployer.ERC20Token.transfer(User.address, OnehundredToken.mul(10)))
+        .to.emit(ERC20Token, 'Transfer')
+        .withArgs(deployer.address, User.address, OnehundredToken.mul(10));
 
-      await expect(User.VM3.approve(Proxy.address, OnehundredVM3))
-        .to.emit(VM3, 'Approval')
-        .withArgs(User.address, Proxy.address, OnehundredVM3);
+      await expect(User.ERC20Token.approve(Proxy.address, OnehundredToken))
+        .to.emit(ERC20Token, 'Approval')
+        .withArgs(User.address, Proxy.address, OnehundredToken);
 
-      await expect(User.Proxy.depositTo(Someone.address, TenVM3))
+      await expect(User.Proxy.depositTo(Someone.address, TenToken))
         .to.emit(Proxy, 'Deposit')
-        .withArgs(Someone.address, TenVM3);
+        .withArgs(Someone.address, TenToken);
 
-      await expect(User.Proxy.deposit(TenVM3)).to.emit(Proxy, 'Deposit').withArgs(User.address, TenVM3);
+      await expect(User.Proxy.deposit(TenToken)).to.emit(Proxy, 'Deposit').withArgs(User.address, TenToken);
 
-      expect(await VM3.balanceOf(User.address)).to.be.eq(OnehundredVM3.mul(10).sub(TenVM3.mul(2)));
-      expect(await Proxy.balanceOfVM3(User.address)).to.be.eq(TenVM3);
-      expect(await Proxy.balanceOfVM3(Someone.address)).to.be.eq(TenVM3);
+      expect(await ERC20Token.balanceOf(User.address)).to.be.eq(OnehundredToken.mul(10).sub(TenToken.mul(2)));
+      expect(await Proxy.balanceOfERC20(User.address)).to.be.eq(TenToken);
+      expect(await Proxy.balanceOfERC20(Someone.address)).to.be.eq(TenToken);
     });
     it('Verify users withdraw balance', async () => {
-      const {VM3, Proxy, OnehundredVM3, TenVM3, users, possessor} = await setup();
+      const {ERC20Token, Proxy, OnehundredToken, TenToken, users, deployer} = await setup();
       const User = users[7];
       const U1 = users[9];
       const U2 = users[8];
-      await possessor.VM3.transfer(User.address, OnehundredVM3.mul(10));
-      await User.VM3.approve(Proxy.address, OnehundredVM3.mul(10));
-      await User.Proxy.depositTo(U1.address, OnehundredVM3);
-      await User.Proxy.depositTo(U2.address, OnehundredVM3);
+      await deployer.ERC20Token.transfer(User.address, OnehundredToken.mul(10));
+      await User.ERC20Token.approve(Proxy.address, OnehundredToken.mul(10));
+      await User.Proxy.depositTo(U1.address, OnehundredToken);
+      await User.Proxy.depositTo(U2.address, OnehundredToken);
 
-      await expect(U1.Proxy.withdraw(TenVM3)).to.emit(Proxy, 'Withdraw').withArgs(U1.address, TenVM3);
-      expect(await VM3.balanceOf(U1.address)).to.be.eq(TenVM3);
-      expect(await Proxy.balanceOfVM3(U1.address)).to.be.eq(TenVM3.mul(9));
+      await expect(U1.Proxy.withdraw(TenToken)).to.emit(Proxy, 'Withdraw').withArgs(U1.address, TenToken);
+      expect(await ERC20Token.balanceOf(U1.address)).to.be.eq(TenToken);
+      expect(await Proxy.balanceOfERC20(U1.address)).to.be.eq(TenToken.mul(9));
 
-      await expect(U2.Proxy.withdraw(TenVM3.mul(2)))
+      await expect(U2.Proxy.withdraw(TenToken.mul(2)))
         .to.emit(Proxy, 'Withdraw')
-        .withArgs(U2.address, TenVM3.mul(2));
-      expect(await VM3.balanceOf(U2.address)).to.be.eq(TenVM3.mul(2));
-      expect(await Proxy.balanceOfVM3(U2.address)).to.be.eq(TenVM3.mul(8));
+        .withArgs(U2.address, TenToken.mul(2));
+      expect(await ERC20Token.balanceOf(U2.address)).to.be.eq(TenToken.mul(2));
+      expect(await Proxy.balanceOfERC20(U2.address)).to.be.eq(TenToken.mul(8));
 
-      await expect(U1.Proxy.withdrawTo(U2.address, TenVM3)).to.emit(Proxy, 'Withdraw').withArgs(U2.address, TenVM3);
-      expect(await VM3.balanceOf(U1.address)).to.be.eq(TenVM3);
-      expect(await Proxy.balanceOfVM3(U1.address)).to.be.eq(TenVM3.mul(8));
-      expect(await VM3.balanceOf(U2.address)).to.be.eq(TenVM3.mul(3));
-      expect(await Proxy.balanceOfVM3(U2.address)).to.be.eq(TenVM3.mul(8));
+      await expect(U1.Proxy.withdrawTo(U2.address, TenToken)).to.emit(Proxy, 'Withdraw').withArgs(U2.address, TenToken);
+      expect(await ERC20Token.balanceOf(U1.address)).to.be.eq(TenToken);
+      expect(await Proxy.balanceOfERC20(U1.address)).to.be.eq(TenToken.mul(8));
+      expect(await ERC20Token.balanceOf(U2.address)).to.be.eq(TenToken.mul(3));
+      expect(await Proxy.balanceOfERC20(U2.address)).to.be.eq(TenToken.mul(8));
     });
 
     it('Verify admin refund balance', async () => {
-      const {VM3, Proxy, OnehundredVM3, TenVM3, Administrator1, Administrator2, users, possessor} = await setup();
+      const {ERC20Token, Proxy, OnehundredToken, TenToken, Administrator1, Administrator2, users, deployer} = await setup();
       const User = users[7];
       const U1 = users[9];
       const U2 = users[8];
-      await possessor.VM3.transfer(User.address, OnehundredVM3.mul(10));
-      await User.VM3.approve(Proxy.address, OnehundredVM3.mul(10));
-      await User.Proxy.depositTo(U1.address, OnehundredVM3);
-      await User.Proxy.depositTo(U2.address, OnehundredVM3);
+      await deployer.ERC20Token.transfer(User.address, OnehundredToken.mul(10));
+      await User.ERC20Token.approve(Proxy.address, OnehundredToken.mul(10));
+      await User.Proxy.depositTo(U1.address, OnehundredToken);
+      await User.Proxy.depositTo(U2.address, OnehundredToken);
 
       const Nonce = 0;
-      const refundHash = web3.utils.hexToBytes(await Proxy.getRefundHash(U1.address, TenVM3, Nonce));
+      const refundHash = web3.utils.hexToBytes(await Proxy.getRefundHash(U1.address, TenToken, Nonce));
       const Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(refundHash));
       const Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(refundHash));
       const Sign = [Sig1, Sig2];
       await Administrator1.Proxy.AddOpHashToPending(
-        web3.utils.hexToBytes(await Proxy.HashToSign(await Proxy.getRefundHash(U1.address, TenVM3, Nonce))),
+        web3.utils.hexToBytes(await Proxy.HashToSign(await Proxy.getRefundHash(U1.address, TenToken, Nonce))),
         Sign
       );
 
-      await expect(Administrator1.Proxy.refund(U1.address, TenVM3, Nonce))
+      await expect(Administrator1.Proxy.refund(U1.address, TenToken, Nonce))
         .to.emit(Proxy, 'Refund')
-        .withArgs(U1.address, TenVM3, false);
-      expect(await VM3.balanceOf(U1.address)).to.be.eq(TenVM3);
-      expect(await Proxy.balanceOfVM3(U1.address)).to.be.eq(TenVM3.mul(9));
+        .withArgs(U1.address, TenToken, false);
+      expect(await ERC20Token.balanceOf(U1.address)).to.be.eq(TenToken);
+      expect(await Proxy.balanceOfERC20(U1.address)).to.be.eq(TenToken.mul(9));
     });
   });
 });
