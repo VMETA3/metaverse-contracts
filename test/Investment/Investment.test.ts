@@ -43,7 +43,7 @@ const setup = deployments.createFixture(async () => {
 
 const SecondsForDay = 60 * 60 * 24;
 const SecondsForMonth = SecondsForDay * 30;
-const OneVM3 = ethers.utils.parseEther('1');
+const OneToken = ethers.utils.parseEther('1');
 const InvestmentLevelList = [
   {
     Level: 1,
@@ -65,9 +65,9 @@ describe('Investment testing', () => {
     expect(await Investment.activityEndTime()).to.be.eq(endTime);
 
     const testUser1 = users[4];
-    const amount = OneVM3.mul(100);
-    const amount2 = OneVM3.mul(1000);
-    const amount3 = OneVM3.mul(10000);
+    const amount = OneToken.mul(100);
+    const amount2 = OneToken.mul(1000);
+    const amount3 = OneToken.mul(10000);
     const totalAmount = amount.add(amount2.add(amount3));
     const interestHouse = totalAmount.mul(5);
 
@@ -127,9 +127,9 @@ describe('Investment testing', () => {
   it('multiple investment in a month check', async () => {
     const {Investment, TestToken, deployer, users, interestAccount} = await setup();
     const testUser1 = users[4];
-    const amount = OneVM3.mul(100);
-    const amount2 = OneVM3.mul(1000);
-    const amount3 = OneVM3.mul(10000);
+    const amount = OneToken.mul(100);
+    const amount2 = OneToken.mul(1000);
+    const amount3 = OneToken.mul(10000);
     const totalAmount = amount.add(amount2.add(amount3));
     const interestHouse = totalAmount.mul(5);
 
@@ -181,8 +181,8 @@ describe('Investment testing', () => {
   it('limit check', async () => {
     const {Investment, deployer, TestToken, users, interestAccount} = await setup();
     const testUser1 = users[4];
-    const amount = OneVM3.mul(100);
-    const amount2 = OneVM3.mul(50000);
+    const amount = OneToken.mul(100);
+    const amount2 = OneToken.mul(50000);
     const totalAmount = amount.add(amount2);
     const interestHouse = totalAmount.mul(5);
 

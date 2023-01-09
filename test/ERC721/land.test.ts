@@ -52,14 +52,14 @@ describe('Land Token', () => {
   describe('mint land', async () => {
     it('Simulate a scenario that the user creates at will', async () => {
       const {users} = await setup();
-      const User = users[10];
+      const User = users[8];
       await expect(User.Proxy.awardItem(User.address, TestConditions, TokenURI)).to.revertedWith(
         'SafeOwnableUpgradeable: caller is not the owner'
       );
     });
     it('Admin build land', async () => {
       const {users, Proxy, Administrator1} = await setup();
-      const User = users[10];
+      const User = users[8];
       await expect(Administrator1.Proxy.awardItem(User.address, TestConditions, TokenURI))
         .to.emit(Proxy, 'Transfer')
         .withArgs(ZeroAddr, User.address, 0);
@@ -69,7 +69,7 @@ describe('Land Token', () => {
   describe('inject active', async () => {
     it('Called in an unauthorized state', async () => {
       const {users, Administrator1, Administrator2, Proxy} = await setup();
-      const User = users[10];
+      const User = users[8];
       const active = 1000;
       const nonce = 0;
       await Administrator1.Proxy.awardItem(Administrator1.address, TestConditions, TokenURI);
