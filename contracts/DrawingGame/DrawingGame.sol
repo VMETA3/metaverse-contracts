@@ -118,11 +118,21 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
         uint256 time = _timestamp._getCurrentTime();
         require(startTime > 0 && time > startTime, "DrawingGame: activity not start");
         require(time < endTime, "DrawingGame: activity ended");
-        require(getWeekday(time) == 0, "DrawingGame: only sunday can draw");
-        require(getHourInDay(time) == 9, "DrawingGame: only nince am can draw");
-        require(time - startTime > 3 * SECONDS_FOR_DAY, "DrawingGame: wait for next week");
-        require(time - lastDrawTime >= SECONDS_FOR_WEEK, "DrawingGame: has been drawn recently");
+        //require(getWeekday(time) == 0, "DrawingGame: only sunday can draw");
+        //require(getHourInDay(time) == 9, "DrawingGame: only nince am can draw");
+        //require(time - startTime > 3 * SECONDS_FOR_DAY, "DrawingGame: wait for next week");
+        //require(time - lastDrawTime >= SECONDS_FOR_WEEK, "DrawingGame: has been drawn recently");
         _;
+    }
+
+    function setChainlinkSubscribeConfig(
+        uint32 callbackGasLimit_,
+        uint64 subscribeId_,
+        bytes32 keyHash_
+    ) external onlyOwner {
+        callbackGasLimit = callbackGasLimit_;
+        keyHash = keyHash_;
+        subscriptionId = subscribeId_;
     }
 
     function depositNFTs(address[] memory contractAddresses, uint256[] memory tokenIds) external onlyOwner {
