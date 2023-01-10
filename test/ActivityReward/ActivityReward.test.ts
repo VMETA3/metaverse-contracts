@@ -119,7 +119,7 @@ describe('ActivityReward', () => {
       await expect(VRFCoordinatorV2Mock.fulfillRandomWordsWithOverride(1, Proxy.address, [num]))
         .to.be.emit(VRFCoordinatorV2Mock, 'RandomWordsFulfilled')
         .withArgs(1, 1, 0, true);
-      expect(await User.ERC20Token.balanceOf(User.address)).to.be.equal(ethers.BigNumber.from('1750000000000000000'));
+      expect(await User.ERC20Token.balanceOf(User.address)).to.be.equal(ethers.BigNumber.from('1800000000000000000'));
     });
   });
 
