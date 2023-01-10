@@ -60,16 +60,10 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
 
     // Upgradeable contracts should have an initialize method in place of the constructor, and the initializer keyword ensures that the contract is initialized only once
     function initialize(
-        address token,
-        address spender_,
-        uint256 chainId,
         address[] memory owners,
         uint8 signRequred,
         address vrfCoordinatorAddress_
     ) public initializer {
-        ERC20Token = IERC20(token);
-        spender = spender_;
-
         __Ownable_init(owners, signRequred);
 
         __VRFConsumerBaseV2_init(vrfCoordinatorAddress_);
@@ -78,8 +72,16 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
         __UUPSUpgradeable_init();
 
         DOMAIN = keccak256(
-            abi.encode(keccak256("Domain(uint256 chainId,address verifyingContract)"), chainId, address(this))
+            abi.encode(keccak256("Domain(uint256 chainId,address verifyingContract)"), block.chainid, address(this))
         );
+    }
+
+    function setSpender(address newSpender) external onlyOwner {
+        spender = newSpender;
+    }
+
+    function setERC20(address token) public onlyOwner {
+        ERC20Token = IERC20(token);
     }
 
     function setChainlink(
@@ -87,7 +89,7 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
         uint64 subscribeId_,
         bytes32 keyHash_,
         uint16 requestConfirmations_
-    ) public onlyOwner {
+    ) external onlyOwner {
         callbackGasLimit = callbackGasLimit_;
         subscriptionId = subscribeId_;
         keyHash = keyHash_;
@@ -124,7 +126,7 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
         private
         onlyOperationPendding(HashToSign(getMultipleRewardHash(to, nonce_)))
     {
-        ERC20Token.transferFrom(to, address(this), 5 * (10**16));
+        // ERC20Token.transferFrom(to, address(this), 5 * (10**16));
         _randomNumber(to, 1);
     }
 
@@ -284,13 +286,5 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
 
     function Spender() public view returns (address) {
         return spender;
-    }
-
-    function setSpender(address newSpender) external onlyOwner {
-        spender = newSpender;
-    }
-
-    function setERC20(address token) public onlyOwner {
-        ERC20Token = IERC20(token);
     }
 }

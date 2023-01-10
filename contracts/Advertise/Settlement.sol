@@ -147,17 +147,17 @@ contract Settlement is ISettlement, Ownable {
     }
 
     receive() external payable {
-        _VMTDeposit(msg.sender, 200_000, bytes(""));
+        _VM3Deposit(msg.sender, 200_000, bytes(""));
     }
 
-    function depositVMT(bytes calldata data_)
+    function depositVM3(bytes calldata data_)
         external
         payable
         override
         isToken(address(0))
         isEnough(address(0), msg.value)
     {
-        _VMTDeposit(msg.sender, msg.value, data_);
+        _VM3Deposit(msg.sender, msg.value, data_);
     }
 
     function depositERC20(address token, uint256 amount) external override isToken(token) isEnough(token, amount) {
@@ -165,15 +165,15 @@ contract Settlement is ISettlement, Ownable {
         emit ERC20Deposit(msg.sender, token, amount);
     }
 
-    function _VMTDeposit(
+    function _VM3Deposit(
         address from,
         uint256 amount,
         bytes memory data_
     ) internal {
-        emit VMTDeposit(from, amount, data_);
+        emit VM3Deposit(from, amount, data_);
     }
 
-    function settlementVMT(uint256 ticket_id) public payable noReentrant isEnded isToken(address(0)) {
+    function settlementVM3(uint256 ticket_id) public payable noReentrant isEnded isToken(address(0)) {
         (address _to, uint256 amount) = _getPrize(ticket_id, address(0));
         if (amount > 0) {
             bool sent = payable(_to).send(amount);

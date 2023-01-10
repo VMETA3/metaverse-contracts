@@ -1,11 +1,11 @@
 import {expect} from '../chai-setup';
-import {ethers, network, upgrades, deployments, getUnnamedAccounts, getNamedAccounts} from 'hardhat';
+import {ethers, upgrades, deployments, getUnnamedAccounts, getNamedAccounts} from 'hardhat';
 import {Land} from '../../typechain';
 import {setupUser, setupUsers} from '../utils';
 import web3 from 'web3';
 
 const Name = 'VMeta3 Land';
-const Symbol = 'VMTLAND';
+const Symbol = 'VM3LAND';
 const signRequired = 2;
 const TokenURI =
   '{"name":"elf 7","description":"this is the 7th elf!","price":"0.09","image":"https://gateway.pinata.cloud/ipfs/QmNzNDMzrVduVrQAvJrp8GwdifEKiQmY1gSfPbq12C8Mhy"}';
@@ -14,12 +14,11 @@ const TestConditions = '100000000000000000000000';
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture('Land');
-  const chainId = network.config.chainId; // chain id
-  const {deployer, Administrator1, Administrator2} = await getNamedAccounts();
-  const owners = [Administrator1, Administrator2];
+  const {deployer, owner, Administrator1, Administrator2} = await getNamedAccounts();
+  const owners = [Administrator1, Administrator2, owner];
 
   const Land = await ethers.getContractFactory('Land');
-  const LandProxy = await upgrades.deployProxy(Land, [chainId, 'VMeta3 Land', 'VMTLAND', owners, signRequired]);
+  const LandProxy = await upgrades.deployProxy(Land, [Name, Symbol, owners, signRequired]);
   await LandProxy.deployed();
 
   const contracts = {
@@ -32,6 +31,7 @@ const setup = deployments.createFixture(async () => {
     ...contracts,
     users,
     deployer: await setupUser(deployer, contracts),
+    owner: await setupUser(owner, contracts),
     Administrator1: await setupUser(Administrator1, contracts),
     Administrator2: await setupUser(Administrator2, contracts),
   };

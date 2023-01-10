@@ -1,16 +1,16 @@
-import { expect } from '../chai-setup';
-import { ethers, deployments, getUnnamedAccounts, getNamedAccounts, upgrades } from 'hardhat';
-import { setupUser, setupUsers } from '../utils';
-import { RaffleBag, VRFCoordinatorV2Mock, GameItem, VM3 } from '../../typechain';
+import {expect} from '../chai-setup';
+import {ethers, deployments, getUnnamedAccounts, getNamedAccounts, upgrades} from 'hardhat';
+import {setupUser, setupUsers} from '../utils';
+import {RaffleBag, VRFCoordinatorV2Mock, GameItem, VM3} from '../../typechain';
 import web3 from 'web3';
-import { BigNumber, BigNumberish } from 'ethers';
-import { PromiseOrValue } from '../../typechain/common';
+import {BigNumber, BigNumberish} from 'ethers';
+import {PromiseOrValue} from '../../typechain/common';
 
 const TenthToken = ethers.BigNumber.from('100000000000000000');
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture('RaffleBag');
-  const { deployer, possessor, Administrator1, Administrator2 } = await getNamedAccounts();
+  const {deployer, possessor, Administrator1, Administrator2} = await getNamedAccounts();
 
   // NFT
   const NFT = await ethers.getContractFactory('GameItem');
@@ -29,11 +29,7 @@ const setup = deployments.createFixture(async () => {
   const signRequred = 2;
 
   const RaffleBag = await ethers.getContractFactory('RaffleBag');
-  const RaffleBagProxy = await upgrades.deployProxy(RaffleBag, [
-    owners,
-    signRequred,
-    VRFCoordinatorV2Mock.address
-  ]);
+  const RaffleBagProxy = await upgrades.deployProxy(RaffleBag, [owners, signRequred, VRFCoordinatorV2Mock.address]);
 
   await RaffleBagProxy.deployed();
 
@@ -61,26 +57,40 @@ const setup = deployments.createFixture(async () => {
 });
 
 //
-const setPrizes = async (BCard: { awardItem: (arg0: any, arg1: string) => any; }, CCard: { awardItem: (arg0: any, arg1: string) => any; }, possessor: { address: any; }, Administrator1: { Proxy: { setPrizes: (arg0: number[], arg1: (number | BigNumber)[], arg2: number[], arg3: PromiseOrValue<BigNumberish>[][]) => any; }; }) => {
+const setPrizes = async (
+  BCard: {awardItem: (arg0: any, arg1: string) => any},
+  CCard: {awardItem: (arg0: any, arg1: string) => any},
+  possessor: {address: any},
+  Administrator1: {
+    Proxy: {
+      setPrizes: (
+        arg0: number[],
+        arg1: (number | BigNumber)[],
+        arg2: number[],
+        arg3: PromiseOrValue<BigNumberish>[][]
+      ) => any;
+    };
+  }
+) => {
   // const enumACard = 0
-  const enumBCard = 1
-  const enumCCard = 2
-  const enumDCard = 3
-  const enumERC20Token = 4
+  const enumBCard = 1;
+  const enumCCard = 2;
+  const enumDCard = 3;
+  const enumERC20Token = 4;
   const prizeKinds = [enumERC20Token, enumERC20Token, enumERC20Token, enumERC20Token, enumDCard, enumCCard, enumBCard];
   const amounts = [TenthToken.mul(2), TenthToken.mul(3), TenthToken.mul(6), TenthToken.mul(8), 0, 0, 0];
   const weights = [30000, 18000, 12000, 6000, 400, 8, 4];
   const CC_Number = 15;
-  const BC_Number = 6
+  const BC_Number = 6;
   const tokens: PromiseOrValue<BigNumberish>[][] = [];
   const BTokens = [];
   const CTokens = [];
   for (let i = 0; i < BC_Number; i++) {
-    await BCard.awardItem(possessor.address, "This is a B-grade card");
+    await BCard.awardItem(possessor.address, 'This is a B-grade card');
     BTokens.push(i);
   }
   for (let i = 0; i < CC_Number; i++) {
-    await CCard.awardItem(possessor.address, "This is a C-grade card");
+    await CCard.awardItem(possessor.address, 'This is a C-grade card');
     CTokens.push(i);
   }
 
@@ -99,15 +109,21 @@ const setPrizes = async (BCard: { awardItem: (arg0: any, arg1: string) => any; }
     prizeKinds,
     amounts,
     weights,
-    tokens
-  }
-}
+    tokens,
+  };
+};
 
 describe('RaffleBag contract', () => {
   describe('Basic parameter settings', async () => {
     it('setAsset', async () => {
-      const { Proxy, ERC20Token, ACard, BCard, CCard, possessor, Administrator1 } = await setup();
-      await Administrator1.Proxy.setAsset(possessor.address, ERC20Token.address, ACard.address, BCard.address, CCard.address);
+      const {Proxy, ERC20Token, ACard, BCard, CCard, possessor, Administrator1} = await setup();
+      await Administrator1.Proxy.setAsset(
+        possessor.address,
+        ERC20Token.address,
+        ACard.address,
+        BCard.address,
+        CCard.address
+      );
       expect(await Proxy.spender()).to.be.equal(possessor.address);
       expect(await Proxy.BCard()).to.be.equal(BCard.address);
       expect(await Proxy.CCard()).to.be.equal(CCard.address);
@@ -115,8 +131,8 @@ describe('RaffleBag contract', () => {
     });
 
     it('setPrizes', async () => {
-      const { Proxy, BCard, CCard, possessor, Administrator1 } = await setup();
-      const { prizeKinds, amounts, weights } = await setPrizes(BCard, CCard, possessor, Administrator1);
+      const {Proxy, BCard, CCard, possessor, Administrator1} = await setup();
+      const {prizeKinds, amounts, weights} = await setPrizes(BCard, CCard, possessor, Administrator1);
       const PrizesPool = await Proxy.getPrizePool();
       expect(PrizesPool.length).to.eq(prizeKinds.length);
       for (let i = 0; i < PrizesPool.length; i++) {
@@ -131,9 +147,26 @@ describe('RaffleBag contract', () => {
 
   describe('Complete various sweepstakes', async () => {
     it('Simple draw, win 0.2 VM3', async () => {
-      const { Proxy, ERC20Token, ACard, BCard, CCard, VRFCoordinatorV2Mock, possessor, Administrator1, Administrator2, users } = await setup();
+      const {
+        Proxy,
+        ERC20Token,
+        ACard,
+        BCard,
+        CCard,
+        VRFCoordinatorV2Mock,
+        possessor,
+        Administrator1,
+        Administrator2,
+        users,
+      } = await setup();
       const User = users[6];
-      await Administrator1.Proxy.setAsset(possessor.address, ERC20Token.address, ACard.address, BCard.address, CCard.address);
+      await Administrator1.Proxy.setAsset(
+        possessor.address,
+        ERC20Token.address,
+        ACard.address,
+        BCard.address,
+        CCard.address
+      );
       await setPrizes(BCard, CCard, possessor, Administrator1);
       await Administrator1.Proxy.setChainlink(250000000, 1, ethers.constants.HashZero, 3);
       await possessor.ERC20Token.approve(Proxy.address, TenthToken.mul(100000));
@@ -143,7 +176,7 @@ describe('RaffleBag contract', () => {
       const Hash = await Proxy.drawHash(User.address, Nonce);
       const HashToBytes = web3.utils.hexToBytes(Hash);
       const Sign1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(HashToBytes));
-      const sendHash = web3.utils.hexToBytes(await Proxy.HashToSign(Hash))
+      const sendHash = web3.utils.hexToBytes(await Proxy.HashToSign(Hash));
       // Special emphasis!
       // When the caller is an administrator himself, it is not necessary to pass in the administrator's signature
       await Administrator2.Proxy.AddOpHashToPending(sendHash, [Sign1]);
@@ -158,13 +191,30 @@ describe('RaffleBag contract', () => {
     });
 
     it('Prize A is drawn and all are claimed, and Prize A does not exist in the prize pool', async () => {
-      const { Proxy, ERC20Token, ACard, BCard, CCard, VRFCoordinatorV2Mock, possessor, Administrator1, Administrator2, users } = await setup();
+      const {
+        Proxy,
+        ERC20Token,
+        ACard,
+        BCard,
+        CCard,
+        VRFCoordinatorV2Mock,
+        possessor,
+        Administrator1,
+        Administrator2,
+        users,
+      } = await setup();
       const User = users[6];
-      await Administrator1.Proxy.setAsset(possessor.address, ERC20Token.address, ACard.address, BCard.address, CCard.address);
+      await Administrator1.Proxy.setAsset(
+        possessor.address,
+        ERC20Token.address,
+        ACard.address,
+        BCard.address,
+        CCard.address
+      );
       // SetPrizes
-      const enumACard = 0
-      const enumBCard = 1
-      const enumDCard = 3
+      const enumACard = 0;
+      const enumBCard = 1;
+      const enumDCard = 3;
       const prizeKinds = [enumACard, enumDCard, enumBCard];
       const amounts = [0, 0, 0];
       const weights = [5, 5, 5000];
@@ -174,12 +224,12 @@ describe('RaffleBag contract', () => {
       const AC_Number = 2; // It is equivalent to infinity.
       const BC_Number = 10;
       for (let i = 0; i < AC_Number; i++) {
-        await ACard.awardItem(possessor.address, "This is a A-grade card");
+        await ACard.awardItem(possessor.address, 'This is a A-grade card');
         await possessor.ACard.approve(Proxy.address, i);
         ATokens.push(i);
       }
       for (let i = 0; i < BC_Number; i++) {
-        await BCard.awardItem(possessor.address, "This is a B-grade card");
+        await BCard.awardItem(possessor.address, 'This is a B-grade card');
         await possessor.BCard.approve(Proxy.address, i);
         BTokens.push(i);
       }
@@ -202,7 +252,7 @@ describe('RaffleBag contract', () => {
         const Hash = await Proxy.drawHash(User.address, Nonce);
         const HashToBytes = web3.utils.hexToBytes(Hash);
         const Sign1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(HashToBytes));
-        const sendHash = web3.utils.hexToBytes(await Proxy.HashToSign(Hash))
+        const sendHash = web3.utils.hexToBytes(await Proxy.HashToSign(Hash));
         // Special emphasis!
         // When the caller is an administrator himself, it is not necessary to pass in the administrator's signature
         await Administrator2.Proxy.AddOpHashToPending(sendHash, [Sign1]);

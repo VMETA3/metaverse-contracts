@@ -28,7 +28,6 @@ contract Land is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnableU
 
     // Upgradeable contracts should have an initialize method in place of the constructor, and the initializer keyword ensures that the contract is initialized only once
     function initialize(
-        uint256 chainId,
         string memory name_,
         string memory symbol_,
         address[] memory owners,
@@ -44,7 +43,7 @@ contract Land is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnableU
             abi.encode(
                 keccak256("Domain(string name,uint256 chainId,address verifyingContract)"),
                 keccak256(bytes(name())),
-                chainId,
+                block.chainid,
                 address(this)
             )
         );

@@ -1,11 +1,12 @@
-import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { DeployFunction } from 'hardhat-deploy/types';
-import { setupUser, setupUsers } from '../../test/utils';
-import { RaffleBag } from '../../typechain';
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
+import {DeployFunction} from 'hardhat-deploy/types';
+import {setupUser} from '../../test/utils';
+import {RaffleBag} from '../../typechain';
+import {getChainlinkConfig} from '../../utils/chainlink';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployer } = await hre.getNamedAccounts();
-  const LogicName = "RaffleBag";
+  const {deployer} = await hre.getNamedAccounts();
+  const LogicName = 'RaffleBag';
 
   const RaffleBag = await hre.deployments.deploy(LogicName, {
     from: deployer,
@@ -16,11 +17,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   hre.deployments.log(`contract RaffleBag deployed at ${RaffleBag.address}`);
 
   const ProxyList = [
-    "Proxy_Active_" + LogicName,
-    "Proxy_Event_" + LogicName,
-    "Proxy_VIP_LV1_" + LogicName,
-    "Proxy_VIP_LV2_" + LogicName,
-    "Proxy_VIP_LV3_" + LogicName,
+    'Proxy_Active_' + LogicName,
+    'Proxy_Event_' + LogicName,
+    'Proxy_VIP_LV1_' + LogicName,
+    'Proxy_VIP_LV2_' + LogicName,
+    'Proxy_VIP_LV3_' + LogicName,
   ];
 
   for (let i = 0; i < ProxyList.length; i++) {
@@ -29,30 +30,28 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 const deployProxy = async function (hre: HardhatRuntimeEnvironment, LogicName: string, ProxyName: string) {
-  const { log, getExtendedArtifact, save } = hre.deployments;
-  const { Administrator1, Administrator2 } = await hre.getNamedAccounts();
-  const Owners = [Administrator1, Administrator2];
-  const targetOwners = ['0xfeaD27a71FDA8458d8b9f9055B50800eCbCaA10e', '0x2Fe8D2Bc3FD37cD7AcbbE668A7a12F957e79D708'];
-  const SignRequired = Owners.length;
+  const {log, getExtendedArtifact, save} = hre.deployments;
+  const {Administrator1, Administrator2, owner} = await hre.getNamedAccounts();
+  const Owners = [Administrator1, Administrator2, owner];
+  const SignRequired = 2;
 
-  //chainlink configure
-  const vrfCoordinatorV2Address = '0x6a2aad07396b36fe02a22b33cf443582f682c82f';
-  const callbackGasLimit = 2500000;
-  const subscribeId = 2387;
-  const keyHash = '0xd4bb89654db74673a187bd804519e65e3f71a52bc55f11da7601a13dcf505314';
-  const requestConfirmations = 3;
+  const Chainlink = getChainlinkConfig(hre.network.name);
+  if (
+    Chainlink.contract === '' ||
+    Chainlink.gasLimit === '' ||
+    Chainlink.subscribeId === '' ||
+    Chainlink.keyHash === '' ||
+    Chainlink.requestConfirmations === ''
+  ) {
+    log(`contract ${ProxyName} Deployment failed! Check the Chain parameter configuration`);
+    return;
+  }
 
   const Logic = await hre.ethers.getContractFactory(LogicName);
-  const Proxy = await hre.upgrades.deployProxy(Logic, [
-    Owners,
-    SignRequired,
-    vrfCoordinatorV2Address
-  ]);
+  const Proxy = await hre.upgrades.deployProxy(Logic, [Owners, SignRequired, Chainlink.contract]);
   await Proxy.deployed();
+  log(`contract ${ProxyName} deployed at ${Proxy.address} using ${Proxy.receipt?.gasUsed} gas`);
 
-  if (Proxy.newlyDeployed) {
-    log(`contract ${ProxyName} deployed at ${Proxy.address} using ${Proxy.receipt?.gasUsed} gas`);
-  }
   const artifact = await getExtendedArtifact(LogicName);
   const proxyDeployments = {
     address: Proxy.address,
@@ -60,18 +59,17 @@ const deployProxy = async function (hre: HardhatRuntimeEnvironment, LogicName: s
   };
   await save(ProxyName, proxyDeployments);
 
-  const RaffleBag = <RaffleBag>Proxy;
-  const Admin1 = await setupUser(Administrator1, { RaffleBag })
-  const Admin2 = await setupUser(Administrator2, { RaffleBag })
+  const P = <RaffleBag>Proxy;
+  const Admin = await setupUser(owner, {P});
 
   // Set up chainlink
-  await Admin1.RaffleBag.setChainlink(callbackGasLimit, subscribeId, keyHash, requestConfirmations);
-  log(`Chainlink setup is complete`);
-
-  // Transfer permissions
-  await Admin1.RaffleBag.transferOwnership(targetOwners[0]);
-  await Admin2.RaffleBag.transferOwnership(targetOwners[1]);
-  log(`Permissions are transferred to `, targetOwners[0], targetOwners[1]);
+  await Admin.P.setChainlink(
+    hre.ethers.BigNumber.from(Chainlink.gasLimit),
+    hre.ethers.BigNumber.from(Chainlink.subscribeId),
+    Chainlink.keyHash,
+    hre.ethers.BigNumber.from(Chainlink.requestConfirmations)
+  );
+  log(`contract ${ProxyName} Chainlink setup is complete`);
 };
 
 export default func;
