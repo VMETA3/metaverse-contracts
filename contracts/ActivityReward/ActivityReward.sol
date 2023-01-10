@@ -124,7 +124,7 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
         private
         onlyOperationPendding(HashToSign(getMultipleRewardHash(to, nonce_)))
     {
-        ERC20Token.transferFrom(to, address(this), 5 * (10**16));
+        // ERC20Token.transferFrom(to, address(this), 5 * (10**16));
         _randomNumber(to, 1);
     }
 
