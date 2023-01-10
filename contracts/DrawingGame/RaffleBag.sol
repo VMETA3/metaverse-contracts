@@ -40,11 +40,11 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
     Prize[] private prizePool;
 
     //chainlink configure
-    uint64 public subscriptionId;
     VRFCoordinatorV2Interface COORDINATOR;
-    bytes32 public keyHash;
+    uint64 public subscriptionId;
     uint32 public callbackGasLimit;
     uint16 requestConfirmations;
+    bytes32 public keyHash;
     struct RequestStatus {
         address user;
         uint256 randomWord;

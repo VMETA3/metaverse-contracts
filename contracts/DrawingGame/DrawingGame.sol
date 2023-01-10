@@ -45,7 +45,7 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
 
     uint256 public distributedNFTs;
     uint256 public drawRounds; // how many round draw
-    uint256 public lastDrawTime;
+    // uint256 public lastDrawTime;
     mapping(address => uint256) public addressWeightMap;
 
     uint256 public startTime;
@@ -59,11 +59,11 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
     event TakeOutNFT(address indexed from, address contractAddress, uint256 tokenId);
 
     //chainlink configure
-    uint64 public subscriptionId;
+    VRFCoordinatorV2Interface COORDINATOR;
     bytes32 public keyHash;
     uint32 public callbackGasLimit;
-    VRFCoordinatorV2Interface COORDINATOR;
     uint32 public numWords;
+    uint64 public subscriptionId;
     uint16 requestConfirmations;
     //chainlink related parameter
     uint256 public lastRequestId;
@@ -80,37 +80,21 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     function initialize(
-        string memory name,
         address[] memory owners,
         uint8 signRequred,
-        address investmentAddress_,
-        //chainlink config
-        address vrfCoordinatorAddress_,
-        uint32 callbackGasLimit_,
-        uint64 subscribeId_,
-        bytes32 keyHash_
+        address vrfCoordinatorAddress_
     ) public initializer {
-        __VRFConsumerBaseV2_init(vrfCoordinatorAddress_);
-        __Ownable_init(owners, signRequred);
-
-        investmentAddress = investmentAddress_;
         //chainlink
-        callbackGasLimit = callbackGasLimit_;
-        keyHash = keyHash_;
-        subscriptionId = subscribeId_;
+        __VRFConsumerBaseV2_init(vrfCoordinatorAddress_);
         COORDINATOR = VRFCoordinatorV2Interface(vrfCoordinatorAddress_);
 
-        lastDrawTime = 0;
+        __Ownable_init(owners, signRequred);
+
+        // lastDrawTime = 0;
         numWords = 30;
-        requestConfirmations = 3;
 
         DOMAIN = keccak256(
-            abi.encode(
-                keccak256("Domain(string name,uint256 chainId,address verifyingContract)"),
-                keccak256(bytes(name)),
-                block.chainid,
-                address(this)
-            )
+            abi.encode(keccak256("Domain(uint256 chainId,address verifyingContract)"), block.chainid, address(this))
         );
     }
 
@@ -125,14 +109,20 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
         _;
     }
 
-    function setChainlinkSubscribeConfig(
+    function setChainlink(
         uint32 callbackGasLimit_,
         uint64 subscribeId_,
-        bytes32 keyHash_
-    ) external onlyOwner {
+        bytes32 keyHash_,
+        uint16 requestConfirmations_
+    ) public onlyOwner {
         callbackGasLimit = callbackGasLimit_;
-        keyHash = keyHash_;
         subscriptionId = subscribeId_;
+        keyHash = keyHash_;
+        requestConfirmations = requestConfirmations_;
+    }
+
+    function setInvestment(address investmentAddress_) public onlyOwner {
+        investmentAddress = investmentAddress_;
     }
 
     function depositNFTs(address[] memory contractAddresses, uint256[] memory tokenIds) external onlyOwner {
@@ -195,7 +185,7 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
             left--;
         }
 
-        lastDrawTime = _timestamp._getCurrentTime();
+        // lastDrawTime = _timestamp._getCurrentTime();
         drawRounds++;
         emit Draw(msg.sender, _timestamp._getCurrentTime(), paticipants.length);
     }

@@ -24,16 +24,7 @@ const setup = deployments.createFixture(async () => {
   await VRFCoordinatorV2MockInstance.createSubscription();
 
   const DrawingGame = await ethers.getContractFactory('DrawingGame');
-  const DrawingGameProxy = await upgrades.deployProxy(DrawingGame, [
-    'DrawingGame',
-    owners,
-    2,
-    InvestmentMock.address,
-    VRFCoordinatorV2Mock.address,
-    250000000,
-    1,
-    ethers.constants.HashZero,
-  ]);
+  const DrawingGameProxy = await upgrades.deployProxy(DrawingGame, [owners, 2, VRFCoordinatorV2Mock.address]);
   await DrawingGameProxy.deployed();
 
   //chainlink add the consumer
@@ -58,8 +49,9 @@ const setup = deployments.createFixture(async () => {
 
 describe('DrawingGame contract', function () {
   it('simple draw', async () => {
-    const {Proxy, Investment, Administrator1, deployer, users, VRFCoordinatorV2, GameItem} = await setup();
-
+    const {Proxy, Investment, Administrator1, users, VRFCoordinatorV2, GameItem} = await setup();
+    await Administrator1.Proxy.setChainlink(250000000, 1, ethers.constants.HashZero, 3);
+    await Administrator1.Proxy.setInvestment(Investment.address);
     expect(await Proxy.investmentAddress()).to.be.eq(Investment.address);
 
     const user0 = users[0];

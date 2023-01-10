@@ -47,17 +47,11 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
 
     // Upgradeable contracts should have an initialize method in place of the constructor, and the initializer keyword ensures that the contract is initialized only once
     function initialize(
-        uint256 chainId,
-        address token,
-        uint256 costs_,
         string memory name_,
         string memory symbol_,
         address[] memory owners,
         uint8 signRequred
     ) public initializer {
-        ERC20Token = IERC20(token);
-        _costs = costs_;
-
         __ERC721_init(name_, symbol_);
 
         __Ownable_init(owners, signRequred);
@@ -68,7 +62,7 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
             abi.encode(
                 keccak256("Domain(string name,uint256 chainId,address verifyingContract)"),
                 keccak256(bytes(name())),
-                chainId,
+                block.chainid,
                 address(this)
             )
         );
@@ -76,6 +70,14 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
 
     // This approach is needed to prevent unauthorized upgrades because in UUPS mode, the upgrade is done from the implementation contract, while in the transparent proxy model, the upgrade is done through the proxy contract
     function _authorizeUpgrade(address) internal override onlyOwner {}
+
+    function setERC20(address token) public onlyOwner {
+        ERC20Token = IERC20(token);
+    }
+
+    function setCosts(uint256 costs_) public onlyOwner {
+        _costs = costs_;
+    }
 
     function getBuildHash(
         address to,
@@ -214,9 +216,5 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
 
     function balanceOfERC20(address account) public view returns (uint256) {
         return _depositAmounts[account];
-    }
-
-    function setERC20(address token) public onlyOwner {
-        ERC20Token = IERC20(token);
     }
 }

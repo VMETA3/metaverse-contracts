@@ -1,20 +1,19 @@
 import {expect} from '../chai-setup';
-import {ethers, upgrades, deployments, getUnnamedAccounts, getNamedAccounts, network} from 'hardhat';
+import {ethers, upgrades, deployments, getUnnamedAccounts, getNamedAccounts} from 'hardhat';
 import {TestERC20, VM3Elf} from '../../typechain';
 import {setupUser, setupUsers} from '../utils';
 import web3 from 'web3';
+
+const OnehundredToken = ethers.BigNumber.from('100000000000000000000');
+const TenToken = OnehundredToken.div(10);
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture('VM3Elf');
   await deployments.fixture('TestERC20');
   const {deployer, Administrator1, Administrator2} = await getNamedAccounts();
-  const OnehundredToken = ethers.BigNumber.from('100000000000000000000');
-  const TenToken = OnehundredToken.div(10);
 
   const Elf = await ethers.getContractFactory('VM3Elf');
-  const ERC20Token = await deployments.get('TestERC20'); // ERC20 Token
 
-  const chainId = network.config.chainId; // chain id
   const Costs = TenToken; // Costs
   const Name = 'VMeta3 Elf';
   const Symbol = 'VM3Elf';
@@ -23,15 +22,7 @@ const setup = deployments.createFixture(async () => {
     '{"name":"elf 7","description":"this is the 7th elf!","price":"0.09","image":"https://gateway.pinata.cloud/ipfs/QmNzNDMzrVduVrQAvJrp8GwdifEKiQmY1gSfPbq12C8Mhy"}';
   const owners = [Administrator1, Administrator2];
 
-  const VM3ElfProxy = await upgrades.deployProxy(Elf, [
-    chainId,
-    ERC20Token.address,
-    Costs,
-    Name,
-    Symbol,
-    owners,
-    signRequired,
-  ]);
+  const VM3ElfProxy = await upgrades.deployProxy(Elf, [Name, Symbol, owners, signRequired]);
   await VM3ElfProxy.deployed();
 
   const contracts = {
@@ -65,7 +56,9 @@ describe('VM3Elf Token', () => {
       expect(await Elf.symbol()).to.be.eq('');
     });
     it('The agent contract has the correct information', async () => {
-      const {Proxy, Name, Symbol, Costs, Administrator1, Administrator2} = await setup();
+      const {Proxy, ERC20Token, Name, Symbol, Costs, Administrator1, Administrator2} = await setup();
+      Administrator1.Proxy.setERC20(ERC20Token.address);
+      Administrator1.Proxy.setCosts(TenToken);
       expect(await Proxy.name()).to.be.eq(Name);
       expect(await Proxy.symbol()).to.be.eq(Symbol);
       expect(await Proxy.costs()).to.be.eq(Costs);
@@ -80,6 +73,8 @@ describe('VM3Elf Token', () => {
     it('Deposit to self and build Elf', async () => {
       const {ERC20Token, Proxy, OnehundredToken, TenToken, TokenURI, users, deployer, Administrator1, Administrator2} =
         await setup();
+      Administrator1.Proxy.setERC20(ERC20Token.address);
+      Administrator1.Proxy.setCosts(TenToken);
       const User = users[7];
       const Nonce1 = 0;
       const BuildHash = web3.utils.hexToBytes(await Proxy.getBuildHash(User.address, TokenURI, Nonce1));
@@ -140,6 +135,8 @@ describe('VM3Elf Token', () => {
     it('Deposit to someone and build Elf', async () => {
       const {ERC20Token, Proxy, OnehundredToken, TenToken, TokenURI, users, deployer, Administrator1, Administrator2} =
         await setup();
+      Administrator1.Proxy.setERC20(ERC20Token.address);
+      Administrator1.Proxy.setCosts(TenToken);
       const User = users[7];
       const Someone = users[9];
       const Nonce = 0;
@@ -249,7 +246,9 @@ describe('VM3Elf Token', () => {
 
   describe('deposit and withdraw', async () => {
     it('Verify users deposit balance', async () => {
-      const {ERC20Token, Proxy, OnehundredToken, TenToken, users, deployer} = await setup();
+      const {ERC20Token, Proxy, OnehundredToken, TenToken, users, deployer, Administrator1} = await setup();
+      Administrator1.Proxy.setERC20(ERC20Token.address);
+      Administrator1.Proxy.setCosts(TenToken);
       const User = users[8];
       const Someone = users[9];
       await expect(deployer.ERC20Token.transfer(User.address, OnehundredToken.mul(10)))
@@ -271,7 +270,9 @@ describe('VM3Elf Token', () => {
       expect(await Proxy.balanceOfERC20(Someone.address)).to.be.eq(TenToken);
     });
     it('Verify users withdraw balance', async () => {
-      const {ERC20Token, Proxy, OnehundredToken, TenToken, users, deployer} = await setup();
+      const {ERC20Token, Proxy, OnehundredToken, TenToken, users, deployer, Administrator1} = await setup();
+      Administrator1.Proxy.setERC20(ERC20Token.address);
+      Administrator1.Proxy.setCosts(TenToken);
       const User = users[7];
       const U1 = users[9];
       const U2 = users[8];
@@ -298,7 +299,10 @@ describe('VM3Elf Token', () => {
     });
 
     it('Verify admin refund balance', async () => {
-      const {ERC20Token, Proxy, OnehundredToken, TenToken, Administrator1, Administrator2, users, deployer} = await setup();
+      const {ERC20Token, Proxy, OnehundredToken, TenToken, Administrator1, Administrator2, users, deployer} =
+        await setup();
+      Administrator1.Proxy.setERC20(ERC20Token.address);
+      Administrator1.Proxy.setCosts(TenToken);
       const User = users[7];
       const U1 = users[9];
       const U2 = users[8];
