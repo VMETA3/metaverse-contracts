@@ -11,12 +11,6 @@ import {Time} from "../Lib/Time.sol";
 contract Vip is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
     IERC20 public ERC20Token;
     address public spender;
-    uint256 public lv1NumberLimit;
-    uint256 public lv2NumberLimit;
-    uint256 public lv3NumberLimit;
-    uint256 public l1Threshold;
-    uint256 public l2Threshold;
-    uint256 public l3Threshold;
     uint256 public activityStartTime;
     uint256 public activityEndTime;
     uint256 constant INTERVAL = 30 days;
@@ -27,19 +21,25 @@ contract Vip is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
     using Time for Time.Timestamp;
     Time.Timestamp private _timestamp;
 
-    struct InvestorInfo {
+    struct VipInfo {
         uint256 amount;
         uint256 startTime;
-        uint8 residualTimes;
         uint8 level;
     }
-
-    struct MapInvestor {
+    struct MapVip {
         address[] keys;
-        mapping(address => InvestorInfo[]) values;
+        mapping(address => VipInfo) values;
         mapping(address => bool) inserted;
     }
-    MapInvestor private mapInvestor;
+    MapVip private mapVip;
+
+    struct Level {
+        uint8 level;
+        uint256 threshold;
+        uint256 numberLimit;
+        uint256 currentNumber;
+    }
+    Level[] private levelArray;
 
     struct LatestList {
         address addr;
@@ -59,65 +59,85 @@ contract Vip is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
         );
     }
 
-    function deposit(uint256 amount) public {
+    function deposit(uint256 amount) external {
+        _deposit(msg.sender, amount);
+    }
+
+    function depositTo(address to, uint256 amount) external {
+        _deposit(to, amount);
+    }
+
+    function _deposit(address to, uint256 amount) internal {
         uint256 time = _timestamp._getCurrentTime();
         require(time > activityStartTime, "Vip: The activity has not started");
         require(time < activityEndTime, "Vip: The activity has ended");
 
-        if (mapInvestor.inserted[msg.sender]) {
-            uint256 len = mapInvestor.values[msg.sender].length;
-            // Calculate the date before the last pledge, and increase the quantity within 30 days.
-            // If it exceeds, it will be regarded as a new round of investment.
-            if (len != 0 && time - mapInvestor.values[msg.sender][len - 1].startTime < INTERVAL) {
-                (uint8 level, uint8 times) = _calculation_level_and_times(
-                    mapInvestor.values[msg.sender][len - 1].amount + amount
-                );
-                mapInvestor.values[msg.sender][len - 1].amount += amount;
-                mapInvestor.values[msg.sender][len - 1].level = level;
-                mapInvestor.values[msg.sender][len - 1].residualTimes = times;
-            } else {
-                _pushMapInvestor(amount);
-            }
+        uint256 lvIndex;
+        if (mapVip.inserted[to]) {
+            VipInfo memory info = mapVip.values[to];
+            require(time - info.startTime < INTERVAL, "Vip: Upgrade must be within 30 days");
+
+            lvIndex = _calculation_level_index(info.amount + amount);
+            require(
+                levelArray[lvIndex].currentNumber < levelArray[lvIndex].numberLimit,
+                "Vip: exceed the number of people limit"
+            );
+
+            info.amount = info.amount + amount;
+            info.level = levelArray[lvIndex].level;
+            mapVip.values[to] = info;
         } else {
-            _pushMapInvestor(amount);
-            mapInvestor.inserted[msg.sender] = true;
-            mapInvestor.keys.push(msg.sender);
+            lvIndex = _calculation_level_index(amount);
+            require(
+                levelArray[lvIndex].currentNumber < levelArray[lvIndex].numberLimit,
+                "Vip: exceed the number of people limit"
+            );
+            mapVip.values[to] = VipInfo(amount, time, levelArray[lvIndex].level);
+            mapVip.inserted[to] = true;
+            mapVip.keys.push(to);
         }
 
-        ERC20Token.transferFrom(msg.sender, spender, amount);
-        emit Deposit(msg.sender, amount);
+        levelArray[lvIndex].currentNumber += 1;
+        ERC20Token.transferFrom(to, spender, amount);
+        emit Deposit(to, amount);
     }
 
-    function _pushMapInvestor(uint256 amount) internal {
-        (uint8 level, uint8 times) = _calculation_level_and_times(amount);
-        mapInvestor.values[msg.sender].push(InvestorInfo(amount, _timestamp._getCurrentTime(), times, level));
-    }
+    function _calculation_level_index(uint256 amount) internal view returns (uint256 index) {
+        uint256 lv1Index;
+        uint256 lv2Index;
+        uint256 lv3Index;
+        for (uint8 i = 0; i < levelArray.length; ++i) {
+            if (levelArray[i].level == 1) {
+                lv1Index = i;
+            }
+            if (levelArray[i].level == 2) {
+                lv2Index = i;
+            }
+            if (levelArray[i].level == 3) {
+                lv3Index = i;
+            }
+        }
 
-    function _calculation_level_and_times(uint256 amount) internal pure returns (uint8 level, uint8 times) {
-        if (amount >= 100 * 10**18 && amount < 1000 * 10**18) {
-            return (1, 12);
-        } else if (amount >= 1000 * 10**18 && amount < 10000 * 10**18) {
-            return (2, 14);
-        } else if (amount >= 10000 * 10**18) {
-            return (3, 18);
-        } else {
-            return (0, 0);
+        if (amount >= levelArray[lv1Index].threshold && amount < levelArray[lv2Index].threshold) {
+            return lv1Index;
+        } else if (amount >= levelArray[lv2Index].threshold && amount < levelArray[lv3Index].threshold) {
+            return lv2Index;
+        } else if (amount >= levelArray[lv3Index].threshold) {
+            return lv3Index;
         }
     }
 
     function getLatestList() external view returns (LatestList[] memory) {
-        LatestList[] memory list = new LatestList[](mapInvestor.keys.length);
-        for (uint256 i = 0; i < mapInvestor.keys.length; i++) {
-            address key = mapInvestor.keys[i];
-            list[i] = LatestList(key, mapInvestor.values[key][mapInvestor.values[key].length - 1].level);
+        LatestList[] memory list = new LatestList[](mapVip.keys.length);
+        for (uint256 i = 0; i < mapVip.keys.length; ++i) {
+            address key = mapVip.keys[i];
+            list[i] = LatestList(key, mapVip.values[key].level);
         }
         return list;
     }
 
-    function getLevel(uint8 index) external view returns (uint8 level) {
-        if (mapInvestor.inserted[msg.sender] && index < mapInvestor.values[msg.sender].length) {
-            level = mapInvestor.values[msg.sender][index].level;
-        }
+    function getLevel(address target) external view returns (uint8 level) {
+        return mapVip.values[target].level;
     }
 
     function setERC20(address token) public onlyOwner {
@@ -126,30 +146,6 @@ contract Vip is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
 
     function setSpender(address spender_) public onlyOwner {
         spender = spender_;
-    }
-
-    function setLv1NumberLimit(uint256 number) external onlyOwner {
-        lv1NumberLimit = number;
-    }
-
-    function setLv2NumberLimit(uint256 number) external onlyOwner {
-        lv2NumberLimit = number;
-    }
-
-    function setLv3NumberLimit(uint256 number) external onlyOwner {
-        lv3NumberLimit = number;
-    }
-
-    function setL1Threshold(uint256 amount) external onlyOwner {
-        l1Threshold = amount;
-    }
-
-    function setL2Threshold(uint256 amount) external onlyOwner {
-        l2Threshold = amount;
-    }
-
-    function setL3Threshold(uint256 amount) external onlyOwner {
-        l3Threshold = amount;
     }
 
     function setActivityStartTime(uint256 time) external onlyOwner {
@@ -166,5 +162,63 @@ contract Vip is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
 
     function getCurrentTime() external view returns (uint256) {
         return _timestamp._getCurrentTime();
+    }
+
+    function setLevelArray(
+        uint8 level,
+        uint256 threshold,
+        uint256 numberLimit,
+        uint256 currentNumber
+    ) external onlyOwner {
+        _setLevelArray(level, threshold, numberLimit, currentNumber);
+    }
+
+    function setLevelArrayAll(
+        uint8[] memory levels_,
+        uint256[] memory thresholds_,
+        uint256[] memory numberLimits_,
+        uint256[] memory currentNumbers_
+    ) external onlyOwner {
+        uint256 len = levels_.length;
+        require(
+            (thresholds_.length == len && numberLimits_.length == len && currentNumbers_.length == len),
+            "Vip: length of the data is different"
+        );
+        for (uint256 i = 0; i < len; ++i) {
+            _setLevelArray(levels_[i], thresholds_[i], numberLimits_[i], currentNumbers_[i]);
+        }
+    }
+
+    function _setLevelArray(
+        uint8 level,
+        uint256 threshold,
+        uint256 numberLimit,
+        uint256 currentNumber
+    ) internal {
+        levelArray.push(Level(level, threshold, numberLimit, currentNumber));
+    }
+
+    function cleanLevelArray(uint256 number) external onlyOwner {
+        _cleanLevelArray(number);
+    }
+
+    function cleanLevelArrayAll() external onlyOwner {
+        for (uint256 i = 0; i < levelArray.length; ++i) {
+            levelArray.pop();
+        }
+    }
+
+    function _cleanLevelArray(uint256 number) private {
+        uint256 last = levelArray.length - 1;
+        if (number != last) {
+            for (uint256 i = number; i < last; ++i) {
+                levelArray[i] = levelArray[i + 1];
+            }
+        }
+        levelArray.pop();
+    }
+
+    function getLevelArray() external view returns (Level[] memory) {
+        return levelArray;
     }
 }
