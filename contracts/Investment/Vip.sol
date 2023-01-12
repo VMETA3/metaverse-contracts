@@ -72,37 +72,45 @@ contract Vip is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
         require(time > activityStartTime, "Vip: The activity has not started");
         require(time < activityEndTime, "Vip: The activity has ended");
 
-        uint256 lvIndex;
+        uint256 levelIndex;
         if (mapVip.inserted[to]) {
             VipInfo memory info = mapVip.values[to];
+            uint256 newAmount = info.amount + amount;
             require(time - info.startTime < INTERVAL, "Vip: Upgrade must be within 30 days");
 
-            lvIndex = _calculation_level_index(info.amount + amount);
-            require(
-                levelArray[lvIndex].currentNumber < levelArray[lvIndex].numberLimit,
-                "Vip: exceed the number of people limit"
-            );
+            levelIndex = _handle(newAmount);
+            require(levelIndex > _get_level_index(info.level), "Vip: level threshold not reached");
 
-            info.amount = info.amount + amount;
-            info.level = levelArray[lvIndex].level;
+            info.amount = newAmount;
+            info.level = levelArray[levelIndex].level;
             mapVip.values[to] = info;
         } else {
-            lvIndex = _calculation_level_index(amount);
-            require(
-                levelArray[lvIndex].currentNumber < levelArray[lvIndex].numberLimit,
-                "Vip: exceed the number of people limit"
-            );
-            mapVip.values[to] = VipInfo(amount, time, levelArray[lvIndex].level);
+            levelIndex = _handle(amount);
+            mapVip.values[to] = VipInfo(amount, time, levelArray[levelIndex].level);
             mapVip.inserted[to] = true;
             mapVip.keys.push(to);
         }
-
-        levelArray[lvIndex].currentNumber += 1;
         ERC20Token.transferFrom(to, spender, amount);
         emit Deposit(to, amount);
     }
 
-    function _calculation_level_index(uint256 amount) internal view returns (uint256 index) {
+    function _handle(uint256 amount) internal returns (uint256 levelIndex) {
+        levelIndex = _calculation_level_index(amount);
+        Level memory currentLevel = levelArray[levelIndex];
+        require(currentLevel.currentNumber < currentLevel.numberLimit, "Vip: exceed the number of people limit");
+        levelArray[levelIndex].currentNumber += 1;
+    }
+
+    function _get_level_index(uint256 level) internal view returns (uint256 levelIndex) {
+        for (uint8 i = 0; i < levelArray.length; ++i) {
+            if (levelArray[i].level == level) {
+                levelIndex = i;
+                break;
+            }
+        }
+    }
+
+    function _calculation_level_index(uint256 amount) internal view returns (uint256 levelIndex) {
         uint256 lv1Index;
         uint256 lv2Index;
         uint256 lv3Index;
@@ -118,12 +126,14 @@ contract Vip is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
             }
         }
 
-        if (amount >= levelArray[lv1Index].threshold && amount < levelArray[lv2Index].threshold) {
-            return lv1Index;
+        if (amount >= levelArray[lv3Index].threshold) {
+            return lv3Index;
         } else if (amount >= levelArray[lv2Index].threshold && amount < levelArray[lv3Index].threshold) {
             return lv2Index;
-        } else if (amount >= levelArray[lv3Index].threshold) {
-            return lv3Index;
+        } else if (amount >= levelArray[lv1Index].threshold && amount < levelArray[lv2Index].threshold) {
+            return lv1Index;
+        } else {
+            require(false, "Vip: level threshold not reached");
         }
     }
 

@@ -91,12 +91,18 @@ describe('Vip testing', () => {
         // testUser1 approve Vip contract can transfer totalAmount token for testing
         await testUser1.ERC20Token.approve(Proxy.address, totalAmount);
 
+        // deposit is not enough money, expect reverted
+        await expect(testUser1.Proxy.deposit(OneToken)).to.be.revertedWith('Vip: level threshold not reached');
+
         // deposit amout, expect level 1
         const levelOne = VipLevelList[0];
         await expect(testUser1.Proxy.deposit(amount))
             .to.be.emit(Proxy, 'Deposit')
             .withArgs(testUser1.address, amount);
         expect(await testUser1.Proxy.getLevel(testUser1.address)).to.be.eq(levelOne.level);
+
+        // deposit is not enough to upgrade money, expect reverted
+        await expect(testUser1.Proxy.deposit(amount)).to.be.revertedWith('Vip: level threshold not reached');
 
         // deposit amout2, expect level 2
         const levelTwo = VipLevelList[1];
