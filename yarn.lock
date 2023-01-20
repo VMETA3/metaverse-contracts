@@ -896,6 +896,11 @@
     "@ethersproject/properties" "^5.7.0"
     "@ethersproject/strings" "^5.7.0"
 
+"@gnus.ai/contracts-upgradeable-diamond@^4.8.1":
+  version "4.8.1"
+  resolved "https://registry.npmmirror.com/@gnus.ai/contracts-upgradeable-diamond/-/contracts-upgradeable-diamond-4.8.1.tgz#1b73ed849e2e1e3e2ac44f33720d82d38b3ec6d1"
+  integrity sha512-b3kEjYlLeBdir06zuwL8p+XXmwZ6gvLIqWC8yLHDmOPZ8LWvFnuDPJK0t57cS2ER80v4cYE8jPp0Lcrv7GKYiQ==
+
 "@humanwhocodes/config-array@^0.10.4":
   version "0.10.4"
   resolved "https://registry.npmjs.org/@humanwhocodes/config-array/-/config-array-0.10.4.tgz"

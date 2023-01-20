@@ -1,8 +1,54 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
-import {SafeOwnable} from "../Abstract/SafeOwnable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {SafeOwnableUpgradeable} from "../Abstract/SafeOwnableUpgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuardUpgradeable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+
+library PrivateSaleStorage {
+    struct SaleInfo {
+        uint64 number;
+        bool puased;
+        uint256 limitAmount;
+        uint256 soldAmount;
+        uint256 exchangeRate; // VM3/USD
+        uint64 startTime;
+        uint64 endTime;
+        uint64 releaseStartTime;
+        uint32 releaseTotalMonths;
+    }
+    struct AssetInfo {
+        uint64 saleNumber; // which sale  user buy
+        bool puased;
+        uint256 amount;
+        uint256 amountWithdrawn;
+        uint64 latestWithdrawTime;
+        uint32 withdrawnMonths;
+        uint32 releaseTotalMonths;
+    }
+    struct Layout {
+        address USDT;
+        address VM3;
+        SaleInfo[] saleList;
+        mapping(address => mapping(uint256 => AssetInfo)) userAssertInfos;
+        bytes32 DOMAIN;
+        // BNB（0x0000000000000000000000000000000000000000）
+        // USDT（0x55d398326f99059fF775485246999027B3197955）
+        // BUSD（0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56）
+        // WBNB（0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c）
+        // ETH（0x2170Ed0880ac9A755fd29B2688956BD959F933F8）
+        mapping(address => bool) supportToken;
+        mapping(address => address) tokenPriceFeed;
+    }
+
+    bytes32 internal constant STORAGE_SLOT = keccak256("vmeta3.PrivateSale");
+
+    function layout() internal pure returns (Layout storage l) {
+        bytes32 slot = STORAGE_SLOT;
+        assembly {
+            l.slot := slot
+        }
+    }
+}
 
 /// @title Safe casting methods
 /// @notice Contains methods for safely casting between types
@@ -36,73 +82,42 @@ interface IERC20 {
     function balanceOf(address account) external view returns (uint256);
 }
 
-contract PrivateSale is SafeOwnable, ReentrancyGuard {
+contract PrivateSale is Initializable, SafeOwnableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeCast for uint256;
 
+    uint64 public constant MONTH = 60 * 60 * 24 * 30;
     event BuyVM3(address indexed from, uint64 indexed saleNumber, uint256 amount);
     event WithdrawVM3(address indexed from, uint64 indexed saleNumber, uint256 amount);
     event AddTokens(address indexed from, address[] tokens, address[] priceFeeds);
 
-    address public USDT;
-    address public VM3;
-    uint64 public constant MONTH = 60 * 60 * 24 * 30;
-    bytes32 public DOMAIN;
-    // BNB（0x0000000000000000000000000000000000000000）
-    // USDT（0x55d398326f99059fF775485246999027B3197955）
-    // BUSD（0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56）
-    // WBNB（0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c）
-    // ETH（0x2170Ed0880ac9A755fd29B2688956BD959F933F8）
-    mapping(address => bool) public supportToken;
-    mapping(address => address) public tokenPriceFeed;
-
-    struct SaleInfo {
-        uint64 number;
-        bool puased;
-        uint256 limitAmount;
-        uint256 soldAmount;
-        uint256 exchangeRate; // VM3/USD
-        uint64 startTime;
-        uint64 endTime;
-        uint64 releaseStartTime;
-        uint32 releaseTotalMonths;
-    }
-    SaleInfo[] public saleList;
-
-    struct AssetInfo {
-        uint64 saleNumber; // which sale  user buy
-        bool puased;
-        uint256 amount;
-        uint256 amountWithdrawn;
-        uint64 latestWithdrawTime;
-        uint32 withdrawnMonths;
-        uint32 releaseTotalMonths;
-    }
-    mapping(address => mapping(uint256 => AssetInfo)) public userAssertInfos;
-
-    constructor(
-        uint256 chainId,
+    function __PrivateSale_init(
         address[] memory owners,
         uint8 signRequired,
         address vm3,
         address usdt
-    ) SafeOwnable(owners, signRequired) {
-        DOMAIN = keccak256(
-            abi.encode(keccak256("Domain(uint256 chainId,address verifyingContract)"), chainId, address(this))
+    ) external onlyInitializing {
+        __Ownable_init(owners, signRequired);
+
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
+        l.DOMAIN = keccak256(
+            abi.encode(keccak256("Domain(uint256 chainId,address verifyingContract)"), block.chainid, address(this))
         );
-        if (saleList.length == 0) {
-            saleList.push();
+        if (l.saleList.length == 0) {
+            l.saleList.push();
         }
 
-        USDT = usdt;
-        VM3 = vm3;
+        l.USDT = usdt;
+        l.VM3 = vm3;
     }
 
     modifier onlyAssetExist(address user, uint64 saleNumber) {
-        require(userAssertInfos[user][saleNumber].saleNumber > 0, "PrivateSale: Asset is not exist");
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
+        require(l.userAssertInfos[user][saleNumber].saleNumber > 0, "PrivateSale: Asset is not exist");
         _;
     }
     modifier onlySaleExist(uint64 saleNumber) {
-        require(saleList.length > saleNumber, "PrivateSale: Sale is not exist");
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
+        require(l.saleList.length > saleNumber, "PrivateSale: Sale is not exist");
         _;
     }
 
@@ -110,13 +125,24 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         uint256 limitAmount_,
         uint256 exchangeRate,
         bytes[] memory sigs
-    ) external onlyMultipleOwner(_hashToSign(_createSaleHash(limitAmount_, exchangeRate, nonce)), sigs) {
-        SaleInfo memory saleInfo = SaleInfo(uint64(saleList.length), false, limitAmount_, 0, exchangeRate, 0, 0, 0, 0);
-        saleList.push(saleInfo);
+    ) external onlyMultipleOwner(_hashToSign(_createSaleHash(limitAmount_, exchangeRate, nonce())), sigs) {
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
+        PrivateSaleStorage.SaleInfo memory saleInfo = PrivateSaleStorage.SaleInfo(
+            uint64(l.saleList.length),
+            false,
+            limitAmount_,
+            0,
+            exchangeRate,
+            0,
+            0,
+            0,
+            0
+        );
+        l.saleList.push(saleInfo);
     }
 
     function totalSale() external view returns (uint256) {
-        return (saleList.length);
+        return (PrivateSaleStorage.layout().saleList.length);
     }
 
     function buy(
@@ -124,8 +150,10 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         address paymentToken,
         uint256 amount
     ) external payable nonReentrant {
-        require(supportToken[paymentToken], "PrivateSale: PaymentToken is not supported");
-        SaleInfo memory saleInfo = saleList[saleNumber];
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
+
+        require(l.supportToken[paymentToken], "PrivateSale: PaymentToken is not supported");
+        PrivateSaleStorage.SaleInfo memory saleInfo = l.saleList[saleNumber];
         require(!saleInfo.puased, "PrivateSale: Sale puased");
         require(
             saleInfo.startTime > block.timestamp && saleInfo.endTime < block.timestamp,
@@ -138,18 +166,18 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
             IERC20(paymentToken).transferFrom(msg.sender, address(this), amount);
         }
 
-        uint256 gotVM3 = _canGotVM3(paymentToken, amount, saleInfo.exchangeRate, tokenPriceFeed[paymentToken]);
+        uint256 gotVM3 = _canGotVM3(paymentToken, amount, saleInfo.exchangeRate, l.tokenPriceFeed[paymentToken]);
         require(gotVM3 + saleInfo.soldAmount < saleInfo.limitAmount, "PrivateSale: Exceed sale limit");
-        saleList[saleNumber].soldAmount += gotVM3;
+        l.saleList[saleNumber].soldAmount += gotVM3;
 
-        AssetInfo memory assetInfo = userAssertInfos[msg.sender][saleNumber];
+        PrivateSaleStorage.AssetInfo memory assetInfo = l.userAssertInfos[msg.sender][saleNumber];
         if (assetInfo.saleNumber == 0) {
             assetInfo.saleNumber = saleNumber;
             assetInfo.releaseTotalMonths = saleInfo.releaseTotalMonths;
         }
         assetInfo.amount += gotVM3;
 
-        userAssertInfos[msg.sender][saleNumber] = assetInfo;
+        l.userAssertInfos[msg.sender][saleNumber] = assetInfo;
     }
 
     function withdrawVM3(uint64[] memory saleNumbers) external nonReentrant {
@@ -160,10 +188,11 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
 
     function withdrawAllSaleVM3(bytes[] memory sigs)
         external
-        onlyMultipleOwner(_hashToSign(_withdrawAllSaleVM3Hash(nonce)), sigs)
+        onlyMultipleOwner(_hashToSign(_withdrawAllSaleVM3Hash(nonce())), sigs)
     {
-        uint256 amount = IERC20(VM3).balanceOf(address(this));
-        IERC20(VM3).transferFrom(address(this), msg.sender, amount);
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
+        uint256 amount = IERC20(l.VM3).balanceOf(address(this));
+        IERC20(l.VM3).transferFrom(address(this), msg.sender, amount);
     }
 
     //settings
@@ -171,7 +200,7 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         address[] memory tokens,
         address[] memory priceFeeds,
         bytes[] memory sigs
-    ) external onlyMultipleOwner(_hashToSign(_addTokensHash(tokens, priceFeeds, nonce)), sigs) {
+    ) external onlyMultipleOwner(_hashToSign(_addTokensHash(tokens, priceFeeds, nonce())), sigs) {
         require(tokens.length == priceFeeds.length);
         for (uint256 i = 0; i < tokens.length; i++) {
             _addToken(tokens[i], priceFeeds[i]);
@@ -185,7 +214,7 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         uint64 startTime,
         uint64 endTime,
         bytes[] memory sigs
-    ) external onlyMultipleOwner(_hashToSign(_setSaleTimeHash(saleNumber, startTime, endTime, nonce)), sigs) {
+    ) external onlyMultipleOwner(_hashToSign(_setSaleTimeHash(saleNumber, startTime, endTime, nonce())), sigs) {
         require(startTime < endTime);
         _setStartAndEndTime(saleNumber, startTime, endTime);
     }
@@ -194,7 +223,7 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         uint64 saleNumber,
         uint256 exchangeRate,
         bytes[] memory sigs
-    ) external onlyMultipleOwner(_hashToSign(_setSaleExchangeRateHash(saleNumber, exchangeRate, nonce)), sigs) {
+    ) external onlyMultipleOwner(_hashToSign(_setSaleExchangeRateHash(saleNumber, exchangeRate, nonce())), sigs) {
         _setExchangeRate(saleNumber, exchangeRate);
     }
 
@@ -206,7 +235,7 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
     )
         external
         onlyMultipleOwner(
-            _hashToSign(_setReleaseParamsHash(saleNumber, releaseStartTime, releaseTotalMonths, nonce)),
+            _hashToSign(_setReleaseParamsHash(saleNumber, releaseStartTime, releaseTotalMonths, nonce())),
             sigs
         )
     {
@@ -217,7 +246,7 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
 
     function puaseSale(uint64 saleNumber, bytes[] memory sigs)
         external
-        onlyMultipleOwner(_hashToSign(_puaseSaleHash(saleNumber, nonce)), sigs)
+        onlyMultipleOwner(_hashToSign(_puaseSaleHash(saleNumber, nonce())), sigs)
     {
         _pauseSale(saleNumber);
     }
@@ -230,7 +259,7 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
     )
         external
         onlyMultipleOwner(
-            _hashToSign(_hashToSign(_setUserReleaseMonthsHash(users, saleNumber, releaseTotalMonths, nonce))),
+            _hashToSign(_hashToSign(_setUserReleaseMonthsHash(users, saleNumber, releaseTotalMonths, nonce()))),
             sigs
         )
     {
@@ -246,7 +275,7 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         address priceFeed
     ) internal view returns (uint256) {
         int256 price = 10**18;
-        if (paymentToken != USDT) {
+        if (paymentToken != PrivateSaleStorage.layout().USDT) {
             (, price, , , ) = AggregatorV3Interface(priceFeed).latestRoundData();
         }
 
@@ -277,21 +306,23 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
     }
 
     function _witdrawVM3(uint64 saleNumber) internal {
-        AssetInfo memory assetInfo = userAssertInfos[msg.sender][saleNumber];
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
+
+        PrivateSaleStorage.AssetInfo memory assetInfo = l.userAssertInfos[msg.sender][saleNumber];
         require(assetInfo.saleNumber > 0, "PrivateSale: not exist");
         require(!assetInfo.puased, "PrivateSale: withdraw puased");
-        require(!saleList[assetInfo.saleNumber].puased, "PrivateSale: sale puased");
-        require(saleList[assetInfo.saleNumber].releaseStartTime > 0, "PrivateSale: release is not started");
+        require(!l.saleList[assetInfo.saleNumber].puased, "PrivateSale: sale puased");
+        require(l.saleList[assetInfo.saleNumber].releaseStartTime > 0, "PrivateSale: release is not started");
         require(block.timestamp - assetInfo.latestWithdrawTime > MONTH, "PrivateSale: has withdraw recently");
 
         if (assetInfo.latestWithdrawTime == 0) {
-            assetInfo.latestWithdrawTime = saleList[assetInfo.saleNumber].releaseStartTime;
+            assetInfo.latestWithdrawTime = l.saleList[assetInfo.saleNumber].releaseStartTime;
         }
         uint16 canWithdrawMonths = uint16((block.timestamp - assetInfo.latestWithdrawTime) / MONTH);
 
         uint256 withdrawAmount = ((assetInfo.amount - assetInfo.amountWithdrawn) /
             (assetInfo.releaseTotalMonths - assetInfo.withdrawnMonths)) * canWithdrawMonths;
-        IERC20(VM3).transferFrom(address(this), msg.sender, withdrawAmount);
+        IERC20(l.VM3).transferFrom(address(this), msg.sender, withdrawAmount);
 
         assetInfo.amountWithdrawn += withdrawAmount;
         assetInfo.latestWithdrawTime = block.timestamp.toUint64();
@@ -303,28 +334,33 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         uint64 startTime,
         uint64 endTime
     ) internal onlySaleExist(number) {
-        saleList[number].startTime = startTime;
-        saleList[number].endTime = endTime;
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
+        l.saleList[number].startTime = startTime;
+        l.saleList[number].endTime = endTime;
     }
 
     function _setExchangeRate(uint64 number, uint256 exchangeRate) internal onlySaleExist(number) {
-        saleList[number].exchangeRate = exchangeRate;
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
+        l.saleList[number].exchangeRate = exchangeRate;
     }
 
     function _pauseSale(uint64 number) internal onlySaleExist(number) {
-        saleList[number].puased = true;
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
+        l.saleList[number].puased = true;
     }
 
     function _addToken(address token, address priceFeed) internal {
-        require(!supportToken[token], "PrivateSale: token already added");
-        supportToken[token] = true;
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
+        require(!l.supportToken[token], "PrivateSale: token already added");
+        l.supportToken[token] = true;
         (, int256 price, , , ) = AggregatorV3Interface(priceFeed).latestRoundData();
         require(price > 0, "PrivateSale: Bad priceFeed");
-        tokenPriceFeed[token] = priceFeed;
+        l.tokenPriceFeed[token] = priceFeed;
     }
 
     function _puaseUserAsset(address user, uint64 saleNumber) internal onlyAssetExist(user, saleNumber) {
-        userAssertInfos[user][saleNumber].puased = true;
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
+        l.userAssertInfos[user][saleNumber].puased = true;
     }
 
     function _setUserAssertReleaseMonths(
@@ -332,8 +368,10 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         uint64 saleNumber,
         uint32 releaseMonths
     ) internal onlyAssetExist(user, saleNumber) {
-        require(userAssertInfos[user][saleNumber].withdrawnMonths < releaseMonths, "");
-        userAssertInfos[user][saleNumber].releaseTotalMonths = releaseMonths;
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
+
+        require(l.userAssertInfos[user][saleNumber].withdrawnMonths < releaseMonths, "");
+        l.userAssertInfos[user][saleNumber].releaseTotalMonths = releaseMonths;
     }
 
     function _setReleaseParams(
@@ -341,13 +379,17 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         uint64 releaseStartTime,
         uint32 releaseTotalMonths
     ) internal onlySaleExist(number) {
-        saleList[number].releaseStartTime = releaseStartTime;
-        saleList[number].releaseTotalMonths = releaseTotalMonths;
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
+
+        l.saleList[number].releaseStartTime = releaseStartTime;
+        l.saleList[number].releaseTotalMonths = releaseTotalMonths;
     }
 
     // safeOwanble
     function _withdrawAllSaleVM3Hash(uint256 nonce_) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(DOMAIN, keccak256("withdrawAllSaleVM3()"), nonce_));
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
+
+        return keccak256(abi.encodePacked(l.DOMAIN, keccak256("withdrawAllSaleVM3()"), nonce_));
     }
 
     function _addTokensHash(
@@ -355,9 +397,11 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         address[] memory priceFeeds,
         uint256 nonce_
     ) internal view returns (bytes32) {
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
+
         return
             keccak256(
-                abi.encodePacked(DOMAIN, keccak256("addTokens(address[], address[])"), tokens, priceFeeds, nonce_)
+                abi.encodePacked(l.DOMAIN, keccak256("addTokens(address[], address[])"), tokens, priceFeeds, nonce_)
             );
     }
 
@@ -366,9 +410,10 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         uint256 exchangeRate,
         uint256 nonce_
     ) internal view returns (bytes32) {
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
         return
             keccak256(
-                abi.encodePacked(DOMAIN, keccak256("createSale(uint256,uint256)"), limitAmount_, exchangeRate, nonce_)
+                abi.encodePacked(l.DOMAIN, keccak256("createSale(uint256,uint256)"), limitAmount_, exchangeRate, nonce_)
             );
     }
 
@@ -378,10 +423,11 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         uint64 endTime,
         uint256 nonce_
     ) internal view returns (bytes32) {
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
         return
             keccak256(
                 abi.encodePacked(
-                    DOMAIN,
+                    l.DOMAIN,
                     keccak256("setSaleTime(uint64,uint64,uint64)"),
                     saleNumber,
                     startTime,
@@ -396,10 +442,11 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         uint256 exchangeRate,
         uint256 nonce_
     ) internal view returns (bytes32) {
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
         return
             keccak256(
                 abi.encodePacked(
-                    DOMAIN,
+                    l.DOMAIN,
                     keccak256("setSaleExchangeRate(uint64,uint256)"),
                     saleNumber,
                     exchangeRate,
@@ -414,10 +461,11 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         uint32[] memory releaseTotalMonths,
         uint256 nonce_
     ) internal view returns (bytes32) {
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
         return
             keccak256(
                 abi.encodePacked(
-                    DOMAIN,
+                    l.DOMAIN,
                     keccak256("setReleaseParams(uint64[],uint64[],uint32[])"),
                     saleNumber,
                     releaseStartTime,
@@ -428,7 +476,8 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
     }
 
     function _puaseSaleHash(uint64 saleNumber, uint256 nonce_) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(DOMAIN, keccak256("puaseSale(uint64)"), saleNumber, nonce_));
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
+        return keccak256(abi.encodePacked(l.DOMAIN, keccak256("puaseSale(uint64)"), saleNumber, nonce_));
     }
 
     function _setUserReleaseMonthsHash(
@@ -437,10 +486,11 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         uint32[] memory releaseTotalMonths,
         uint256 nonce_
     ) internal view returns (bytes32) {
+        PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
         return
             keccak256(
                 abi.encodePacked(
-                    DOMAIN,
+                    l.DOMAIN,
                     keccak256("setUserReleaseMonths(address[],uint64[],uint32[])"),
                     users,
                     saleNumber,

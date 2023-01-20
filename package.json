@@ -81,6 +81,7 @@
   "dependencies": {
     "@chainlink/contracts": "^0.5.1",
     "@eth-optimism/core-utils": "^0.10.0",
+    "@gnus.ai/contracts-upgradeable-diamond": "^4.8.1",
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@openzeppelin/contracts-upgradeable": "^4.7.3",
     "chainlink": "^0.8.2"
