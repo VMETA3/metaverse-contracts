@@ -39,13 +39,12 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
         uint256 tokenId;
     }
     mapping(address => NFTInfo) public wonNFT;
-    mapping(address => bool) private won;
+    mapping(address => bool) public won;
     NFTInfo[] public nfts; //nft token id list
     mapping(address => mapping(uint256 => bool)) nftExistPrizePool;
 
     uint256 public distributedNFTs;
     uint256 public drawRounds; // how many round draw
-    // uint256 public lastDrawTime;
     mapping(address => uint256) public addressWeightMap;
 
     uint256 public startTime;
@@ -55,14 +54,13 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
     using Time for Time.Timestamp;
     Time.Timestamp private _timestamp;
 
-    event Draw(address indexed from, uint256 indexed time, uint256 paticipantsNumber);
+    event Draw(address indexed from, address[] winners, address[] contactAddressList, uint256[] tokenIdList);
     event TakeOutNFT(address indexed from, address contractAddress, uint256 tokenId);
 
     //chainlink configure
     VRFCoordinatorV2Interface COORDINATOR;
     bytes32 public keyHash;
     uint32 public callbackGasLimit;
-    uint32 public numWords;
     uint64 public subscriptionId;
     uint16 requestConfirmations;
     //chainlink related parameter
@@ -89,9 +87,6 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
         COORDINATOR = VRFCoordinatorV2Interface(vrfCoordinatorAddress_);
 
         __Ownable_init(owners, signRequred);
-
-        // lastDrawTime = 0;
-        numWords = 30;
 
         DOMAIN = keccak256(
             abi.encode(keccak256("Domain(uint256 chainId,address verifyingContract)"), block.chainid, address(this))
@@ -151,56 +146,33 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
         }
     }
 
-    function drawByManager(address[] memory winners) external checkDrawTime onlyOwner {
-        require(winners.length <= 30, "DrawingGame: limit 30 winners per round");
-        for (uint256 i = 0; i < winners.length && nfts.length > distributedNFTs; i++) {
-            if (won[winners[i]]) {
-                // ignore people who have won NFT
-                continue;
-            }
-
-            wonNFT[winners[i]] = NFTInfo(nfts[distributedNFTs].contractAddress, nfts[distributedNFTs].tokenId);
-            nftExistPrizePool[wonNFT[winners[i]].contractAddress][wonNFT[winners[i]].tokenId] = false;
-            distributedNFTs++;
-        }
-
-        emit Draw(msg.sender, _timestamp._getCurrentTime(), winners.length);
-    }
-
     function _draw(uint256[] memory randomNumbers) internal checkDrawTime {
         (address[] memory paticipants, uint256 totalWeight) = getParticipants();
-        uint256 left = paticipants.length;
-        require(left > 0, "DrawingGame: no paticipants");
+        require(paticipants.length > 0, "DrawingGame: no paticipants");
 
-        for (uint256 i = 0; i < 30 && left > 0 && nfts.length > distributedNFTs; i++) {
+        address[] memory contractAddressList = new address[](randomNumbers.length);
+        uint256[] memory tokenIdList = new uint256[](randomNumbers.length);
+        address[] memory winners = new address[](randomNumbers.length);
+        for (uint256 i = 0; i < randomNumbers.length && nfts.length > distributedNFTs; i++) {
             uint256 num = randomNumbers[i] % totalWeight;
-            (address addr, uint256 index) = whoWin(paticipants, num);
-            wonNFT[addr] = nfts[distributedNFTs];
-            totalWeight -= addressWeightMap[addr];
-            paticipants[index] = paticipants[paticipants.length - 1];
+            address winner = whoWin(paticipants, num);
+            if (winner == address(0)) {
+                break;
+            }
+            totalWeight -= addressWeightMap[winner];
 
-            delete paticipants[paticipants.length - 1];
-            nftExistPrizePool[wonNFT[addr].contractAddress][wonNFT[addr].tokenId] = false;
+            NFTInfo memory nft = nfts[distributedNFTs];
+            IERC721(nft.contractAddress).transferFrom(address(this), winner, nft.tokenId);
+            won[winner] = true;
+            winners[i] = winner;
+
+            contractAddressList[i] = nfts[distributedNFTs].contractAddress;
+            tokenIdList[i] = nfts[distributedNFTs].tokenId;
             distributedNFTs++;
-            left--;
         }
 
-        // lastDrawTime = _timestamp._getCurrentTime();
         drawRounds++;
-        emit Draw(msg.sender, _timestamp._getCurrentTime(), paticipants.length);
-    }
-
-    function takeOutNFT() external {
-        NFTInfo memory nftInfo = wonNFT[msg.sender];
-        require(nftInfo.contractAddress != address(0), "DrawingGame: you not won nft");
-        require(
-            IERC721(nftInfo.contractAddress).ownerOf(nftInfo.tokenId) != msg.sender,
-            "DrawingGame: you have taken nft"
-        );
-
-        IERC721(nftInfo.contractAddress).transferFrom(address(this), msg.sender, nftInfo.tokenId);
-        delete wonNFT[msg.sender];
-        emit TakeOutNFT(msg.sender, nftInfo.contractAddress, nftInfo.tokenId);
+        emit Draw(msg.sender, winners, contractAddressList, tokenIdList);
     }
 
     function getParticipants() internal returns (address[] memory, uint256) {
@@ -234,16 +206,22 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
         return nfts.length;
     }
 
-    function whoWin(address[] memory accounts, uint256 num) internal view returns (address, uint256) {
+    function whoWin(address[] memory accounts, uint256 num) internal view returns (address) {
         uint256 count = 0;
-        for (uint256 i = 0; i < accounts.length && accounts[i] != address(0); i++) {
+        for (uint256 i = 0; i < accounts.length; i++) {
+            if (accounts[i] == address(0)) {
+                continue;
+            }
+
             count += addressWeightMap[accounts[i]];
             if (count >= num) {
-                return (accounts[i], i);
+                address winner = accounts[i];
+                delete accounts[i];
+                return (winner);
             }
         }
 
-        return (address(0), 0);
+        return (address(0));
     }
 
     function calculteWeight(uint8 level) internal pure returns (uint256) {
@@ -279,7 +257,7 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
     }
 
     // chainlink
-    function requestRandomWordsForDraw() external checkDrawTime onlyOwner returns (uint256 requestId) {
+    function requestRandomWordsForDraw(uint32 numWords) external checkDrawTime onlyOwner returns (uint256 requestId) {
         // Will revert if subscription is not set and funded.
         requestId = COORDINATOR.requestRandomWords(
             keyHash,
