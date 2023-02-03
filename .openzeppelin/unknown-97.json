@@ -120,6 +120,11 @@
       "address": "0xFbE67acAf1C5F16df1Bf89f7433Ed96526172D7c",
       "txHash": "0x86eb117ac4a6c16d915e2f0959a692e3d037d0f2b50fc1924095857b2dbdf4ab",
       "kind": "uups"
+    },
+    {
+      "address": "0xb443E36Df12703d129E0a14233658e32c6c9F6a9",
+      "txHash": "0x8290d9ba8977334633d977d48c0c0c2f0921068afa564f5c0f5eae3bc86c3e46",
+      "kind": "uups"
     }
   ],
   "impls": {
@@ -2258,6 +2263,414 @@
             "numberOfBytes": "64"
           },
           "t_struct(Timestamp)3374_storage": {
+            "label": "struct Time.Timestamp",
+            "members": [
+              {
+                "label": "_current_time",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint32": {
+            "label": "uint32",
+            "numberOfBytes": "4"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "aaecfcee2eafa40a993d12eac43e0c9996260e6d57437812c9c707430962a255": {
+      "address": "0x6DDccAe3af66f228d5E7395Df96C92cc71eF3322",
+      "txHash": "0x88e49a5323acb6d8e30bc83712e57b01a1afb69f0c4c02555013a947beefe75a",
+      "layout": {
+        "solcVersion": "0.8.9",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ERC1967UpgradeUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/ERC1967/ERC1967UpgradeUpgradeable.sol:211"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "UUPSUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol:107"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owners",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_array(t_address)6_storage",
+            "contract": "SafeOwnableUpgradeable",
+            "src": "contracts/Abstract/SafeOwnableUpgradeable.sol:18"
+          },
+          {
+            "label": "_ownersIndex",
+            "offset": 0,
+            "slot": "157",
+            "type": "t_mapping(t_address,t_uint8)",
+            "contract": "SafeOwnableUpgradeable",
+            "src": "contracts/Abstract/SafeOwnableUpgradeable.sol:19"
+          },
+          {
+            "label": "_numOwners",
+            "offset": 0,
+            "slot": "158",
+            "type": "t_uint8",
+            "contract": "SafeOwnableUpgradeable",
+            "src": "contracts/Abstract/SafeOwnableUpgradeable.sol:20"
+          },
+          {
+            "label": "signRequired",
+            "offset": 1,
+            "slot": "158",
+            "type": "t_uint8",
+            "contract": "SafeOwnableUpgradeable",
+            "src": "contracts/Abstract/SafeOwnableUpgradeable.sol:23"
+          },
+          {
+            "label": "operationsStatus",
+            "offset": 0,
+            "slot": "159",
+            "type": "t_mapping(t_bytes32,t_enum(OpStatus)1748)",
+            "contract": "SafeOwnableUpgradeable",
+            "src": "contracts/Abstract/SafeOwnableUpgradeable.sol:24"
+          },
+          {
+            "label": "nonce",
+            "offset": 0,
+            "slot": "160",
+            "type": "t_uint256",
+            "contract": "SafeOwnableUpgradeable",
+            "src": "contracts/Abstract/SafeOwnableUpgradeable.sol:26"
+          },
+          {
+            "label": "vrfCoordinator",
+            "offset": 0,
+            "slot": "161",
+            "type": "t_address",
+            "contract": "VRFConsumerBaseV2Upgradeable",
+            "src": "contracts/Chainlink/VRFConsumerBaseV2Upgradeable.sol:101"
+          },
+          {
+            "label": "investmentAddress",
+            "offset": 0,
+            "slot": "162",
+            "type": "t_address",
+            "contract": "DrawingGame",
+            "src": "contracts/DrawingGame/DrawingGame.sol:34"
+          },
+          {
+            "label": "DOMAIN",
+            "offset": 0,
+            "slot": "163",
+            "type": "t_bytes32",
+            "contract": "DrawingGame",
+            "src": "contracts/DrawingGame/DrawingGame.sol:35"
+          },
+          {
+            "label": "wonNFT",
+            "offset": 0,
+            "slot": "164",
+            "type": "t_mapping(t_address,t_struct(NFTInfo)2262_storage)",
+            "contract": "DrawingGame",
+            "src": "contracts/DrawingGame/DrawingGame.sol:41"
+          },
+          {
+            "label": "won",
+            "offset": 0,
+            "slot": "165",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "DrawingGame",
+            "src": "contracts/DrawingGame/DrawingGame.sol:42"
+          },
+          {
+            "label": "nfts",
+            "offset": 0,
+            "slot": "166",
+            "type": "t_array(t_struct(NFTInfo)2262_storage)dyn_storage",
+            "contract": "DrawingGame",
+            "src": "contracts/DrawingGame/DrawingGame.sol:43"
+          },
+          {
+            "label": "nftExistPrizePool",
+            "offset": 0,
+            "slot": "167",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_bool))",
+            "contract": "DrawingGame",
+            "src": "contracts/DrawingGame/DrawingGame.sol:44"
+          },
+          {
+            "label": "distributedNFTs",
+            "offset": 0,
+            "slot": "168",
+            "type": "t_uint256",
+            "contract": "DrawingGame",
+            "src": "contracts/DrawingGame/DrawingGame.sol:46"
+          },
+          {
+            "label": "drawRounds",
+            "offset": 0,
+            "slot": "169",
+            "type": "t_uint256",
+            "contract": "DrawingGame",
+            "src": "contracts/DrawingGame/DrawingGame.sol:47"
+          },
+          {
+            "label": "addressWeightMap",
+            "offset": 0,
+            "slot": "170",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "DrawingGame",
+            "src": "contracts/DrawingGame/DrawingGame.sol:48"
+          },
+          {
+            "label": "startTime",
+            "offset": 0,
+            "slot": "171",
+            "type": "t_uint256",
+            "contract": "DrawingGame",
+            "src": "contracts/DrawingGame/DrawingGame.sol:50"
+          },
+          {
+            "label": "endTime",
+            "offset": 0,
+            "slot": "172",
+            "type": "t_uint256",
+            "contract": "DrawingGame",
+            "src": "contracts/DrawingGame/DrawingGame.sol:51"
+          },
+          {
+            "label": "_timestamp",
+            "offset": 0,
+            "slot": "173",
+            "type": "t_struct(Timestamp)3262_storage",
+            "contract": "DrawingGame",
+            "src": "contracts/DrawingGame/DrawingGame.sol:55"
+          },
+          {
+            "label": "COORDINATOR",
+            "offset": 0,
+            "slot": "174",
+            "type": "t_contract(VRFCoordinatorV2Interface)95",
+            "contract": "DrawingGame",
+            "src": "contracts/DrawingGame/DrawingGame.sol:61"
+          },
+          {
+            "label": "keyHash",
+            "offset": 0,
+            "slot": "175",
+            "type": "t_bytes32",
+            "contract": "DrawingGame",
+            "src": "contracts/DrawingGame/DrawingGame.sol:62"
+          },
+          {
+            "label": "callbackGasLimit",
+            "offset": 0,
+            "slot": "176",
+            "type": "t_uint32",
+            "contract": "DrawingGame",
+            "src": "contracts/DrawingGame/DrawingGame.sol:63"
+          },
+          {
+            "label": "subscriptionId",
+            "offset": 4,
+            "slot": "176",
+            "type": "t_uint64",
+            "contract": "DrawingGame",
+            "src": "contracts/DrawingGame/DrawingGame.sol:64"
+          },
+          {
+            "label": "requestConfirmations",
+            "offset": 12,
+            "slot": "176",
+            "type": "t_uint16",
+            "contract": "DrawingGame",
+            "src": "contracts/DrawingGame/DrawingGame.sol:65"
+          },
+          {
+            "label": "lastRequestId",
+            "offset": 0,
+            "slot": "177",
+            "type": "t_uint256",
+            "contract": "DrawingGame",
+            "src": "contracts/DrawingGame/DrawingGame.sol:67"
+          },
+          {
+            "label": "requests",
+            "offset": 0,
+            "slot": "178",
+            "type": "t_mapping(t_uint256,t_struct(RequestStatus)2355_storage)",
+            "contract": "DrawingGame",
+            "src": "contracts/DrawingGame/DrawingGame.sol:75"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_address)6_storage": {
+            "label": "address[6]",
+            "numberOfBytes": "192"
+          },
+          "t_array(t_struct(NFTInfo)2262_storage)dyn_storage": {
+            "label": "struct DrawingGame.NFTInfo[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_array(t_uint256)dyn_storage": {
+            "label": "uint256[]",
+            "numberOfBytes": "32"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_contract(VRFCoordinatorV2Interface)95": {
+            "label": "contract VRFCoordinatorV2Interface",
+            "numberOfBytes": "20"
+          },
+          "t_enum(OpStatus)1748": {
+            "label": "enum SafeOwnableUpgradeable.OpStatus",
+            "members": [
+              "OpDefault",
+              "OpPending",
+              "OpExecuted",
+              "OpCancel"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_mapping(t_uint256,t_bool))": {
+            "label": "mapping(address => mapping(uint256 => bool))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(NFTInfo)2262_storage)": {
+            "label": "mapping(address => struct DrawingGame.NFTInfo)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint8)": {
+            "label": "mapping(address => uint8)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_enum(OpStatus)1748)": {
+            "label": "mapping(bytes32 => enum SafeOwnableUpgradeable.OpStatus)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_bool)": {
+            "label": "mapping(uint256 => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(RequestStatus)2355_storage)": {
+            "label": "mapping(uint256 => struct DrawingGame.RequestStatus)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(NFTInfo)2262_storage": {
+            "label": "struct DrawingGame.NFTInfo",
+            "members": [
+              {
+                "label": "contractAddress",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "tokenId",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(RequestStatus)2355_storage": {
+            "label": "struct DrawingGame.RequestStatus",
+            "members": [
+              {
+                "label": "fulfilled",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "exists",
+                "type": "t_bool",
+                "offset": 1,
+                "slot": "0"
+              },
+              {
+                "label": "randomWords",
+                "type": "t_array(t_uint256)dyn_storage",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(Timestamp)3262_storage": {
             "label": "struct Time.Timestamp",
             "members": [
               {
