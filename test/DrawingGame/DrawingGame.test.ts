@@ -3,6 +3,7 @@ import {ethers, deployments, getUnnamedAccounts, getNamedAccounts, network, upgr
 import {setupUser, setupUsers} from '../utils';
 import {DrawingGame, InvestmentMock, VRFCoordinatorV2Mock, GameItem} from '../../typechain';
 import {time} from '@nomicfoundation/hardhat-network-helpers';
+import {BigNumber} from 'ethers';
 
 const zeroAddress = ethers.constants.AddressZero;
 
@@ -24,16 +25,7 @@ const setup = deployments.createFixture(async () => {
   await VRFCoordinatorV2MockInstance.createSubscription();
 
   const DrawingGame = await ethers.getContractFactory('DrawingGame');
-  const DrawingGameProxy = await upgrades.deployProxy(DrawingGame, [
-    'DrawingGame',
-    owners,
-    2,
-    InvestmentMock.address,
-    VRFCoordinatorV2Mock.address,
-    250000000,
-    1,
-    ethers.constants.HashZero,
-  ]);
+  const DrawingGameProxy = await upgrades.deployProxy(DrawingGame, [owners, 2, VRFCoordinatorV2Mock.address]);
   await DrawingGameProxy.deployed();
 
   //chainlink add the consumer
@@ -58,11 +50,11 @@ const setup = deployments.createFixture(async () => {
 
 describe('DrawingGame contract', function () {
   it('simple draw', async () => {
-    const {Proxy, Investment, Administrator1, deployer, users, VRFCoordinatorV2, GameItem} = await setup();
-
+    const {Proxy, Investment, Administrator1, users, VRFCoordinatorV2, GameItem} = await setup();
+    await Administrator1.Proxy.setChainlink(250000000, 1, ethers.constants.HashZero, 3);
+    await Administrator1.Proxy.setInvestment(Investment.address);
     expect(await Proxy.investmentAddress()).to.be.eq(Investment.address);
 
-    const user0 = users[0];
     for (let i = 0; i < 10; i++) {
       // Add investor
       const amount = ethers.utils.parseEther('100');
@@ -87,27 +79,29 @@ describe('DrawingGame contract', function () {
     await Administrator1.Proxy.setStartTime(lastTime);
     await Administrator1.Proxy.setEndTime(lastTime + 24 * 60 * 60 * 180);
     await network.provider.send('evm_setNextBlockTimestamp', [1677402600]); //FIXME
-    await Administrator1.Proxy.requestRandomWordsForDraw();
+    await Administrator1.Proxy.requestRandomWordsForDraw(2);
     expect(await VRFCoordinatorV2.s_nextRequestId()).to.be.equal(2);
-    const arr: number[] = [
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
-    ];
+    const arr: number[] = [1, 1];
     await expect(VRFCoordinatorV2.fulfillRandomWordsWithOverride(1, Proxy.address, arr))
-      .to.be.emit(VRFCoordinatorV2, 'RandomWordsFulfilled')
-      .withArgs(1, 1, 0, true);
-
-    expect(await Proxy.distributedNFTs()).to.be.eq(10);
-
-    const user0NFT = await Proxy.wonNFT(user0.address);
-    expect(user0NFT.tokenId).to.be.eq(0);
-
-    const newBlockTimeStamp = 1677402600 + 10 + 24 * 60 * 60 * 7;
-    await network.provider.send('evm_setNextBlockTimestamp', [newBlockTimeStamp]); //FIXME
-    await expect(Administrator1.Proxy.drawByManager([user0.address]))
       .to.be.emit(Proxy, 'Draw')
-      .withArgs(Administrator1.address, newBlockTimeStamp, 1);
+      .withArgs(
+        VRFCoordinatorV2.address,
+        [users[0].address, users[1].address],
+        [GameItem.address, GameItem.address],
+        [0, 1]
+      );
 
-    await Administrator1.Proxy.withdrawNFTs(100, Administrator1.address);
-    expect(await Proxy.getTotalNFT()).to.be.eq(11);
+    expect(await Proxy.distributedNFTs()).to.be.eq(2);
+
+    for (let i = 0; i < 2; i++) {
+      expect(await GameItem.ownerOf(i)).to.be.eq(users[i].address);
+      expect(await Proxy.won(users[i].address)).to.be.eq(true);
+    }
+
+    await Administrator1.Proxy.withdrawNFTs(100, users[10].address);
+    expect(await Proxy.getTotalNFT()).to.be.eq(2);
+    for (let i = 2; i < 100; i++) {
+      expect(await GameItem.ownerOf(i)).to.be.eq(users[10].address);
+    }
   });
 });

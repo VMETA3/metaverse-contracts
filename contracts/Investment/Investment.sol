@@ -6,6 +6,7 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "../Abstract/SafeOwnableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Time} from "../Lib/Time.sol";
 
 contract Investment is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
     bytes32 public DOMAIN;
@@ -21,6 +22,10 @@ contract Investment is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
 
     uint256 public activityStartTime;
     uint256 public activityEndTime;
+
+    // Control timestamp
+    using Time for Time.Timestamp;
+    Time.Timestamp private _timestamp;
 
     struct InvestorInfo {
         uint256 amount;
@@ -43,6 +48,14 @@ contract Investment is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
 
     event Deposit(address account, uint256 amount);
     event Withdraw(address account, uint256 amount);
+
+    bool internal locked;
+    modifier lock() {
+        require(!locked, "No re-entrancy");
+        locked = true;
+        _;
+        locked = false;
+    }
 
     // This approach is needed to prevent unauthorized upgrades because in UUPS mode, the upgrade is done from the implementation contract, while in the transparent proxy model, the upgrade is done through the proxy contract
     function _authorizeUpgrade(address) internal override onlyOwner {}
@@ -74,8 +87,9 @@ contract Investment is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
     }
 
     function deposit(uint256 amount) public {
-        require(block.timestamp > activityStartTime, "Investment: The activity has not started");
-        require(block.timestamp < activityEndTime, "Investment: The activity has ended");
+        uint256 time = _timestamp._getCurrentTime();
+        require(time > activityStartTime, "Investment: The activity has not started");
+        require(time < activityEndTime, "Investment: The activity has ended");
 
         if (mapInvestor.inserted[msg.sender]) {
             uint256 len = mapInvestor.values[msg.sender].length;
@@ -88,7 +102,7 @@ contract Investment is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
 
             // Calculate the date before the last pledge, and increase the quantity within 30 days.
             // If it exceeds, it will be regarded as a new round of investment.
-            if (len != 0 && block.timestamp - mapInvestor.values[msg.sender][len - 1].startTime < INTERVAL) {
+            if (len != 0 && time - mapInvestor.values[msg.sender][len - 1].startTime < INTERVAL) {
                 uint256 originalInterest = _calculation_interest(
                     mapInvestor.values[msg.sender][len - 1].amount,
                     mapInvestor.values[msg.sender][len - 1].residualTimes
@@ -132,7 +146,7 @@ contract Investment is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
 
         interestToken.transferFrom(msg.sender, address(this), amount);
 
-        mapInvestor.values[msg.sender].push(InvestorInfo(amount, block.timestamp, times, level));
+        mapInvestor.values[msg.sender].push(InvestorInfo(amount, _timestamp._getCurrentTime(), times, level));
         unreturnedInterest += interest;
     }
 
@@ -168,15 +182,16 @@ contract Investment is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
     function _calculation_can_return_times() internal view returns (uint8[] memory, uint256) {
         uint8[] memory times = new uint8[](mapInvestor.values[msg.sender].length);
         uint256 total;
+        uint256 time = _timestamp._getCurrentTime();
         for (uint8 i = 0; i < mapInvestor.values[msg.sender].length; i++) {
             // Less than 30 days, failing to meet the distribution conditions
-            if (block.timestamp - mapInvestor.values[msg.sender][i].startTime <= INTERVAL) {
+            if (time - mapInvestor.values[msg.sender][i].startTime <= INTERVAL) {
                 break;
             }
 
             uint8 totalTimes = _calculation_times(mapInvestor.values[msg.sender][i].level);
             uint8 gotTimes = totalTimes - mapInvestor.values[msg.sender][i].residualTimes;
-            uint256 lastMonth = (block.timestamp - mapInvestor.values[msg.sender][i].startTime) / INTERVAL;
+            uint256 lastMonth = (time - mapInvestor.values[msg.sender][i].startTime) / INTERVAL;
 
             if (mapInvestor.values[msg.sender][i].residualTimes == 0) {
                 times[i] = 0;
@@ -192,7 +207,7 @@ contract Investment is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
         (, total) = _calculation_can_return_times();
     }
 
-    function withdraw() public {
+    function withdraw() public lock {
         (uint8[] memory times, uint256 amount) = _calculation_can_return_times();
         if (amount != 0) {
             interestToken.transferFrom(interestAddr, msg.sender, amount);
@@ -223,5 +238,17 @@ contract Investment is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
         if (mapInvestor.inserted[msg.sender] && index < mapInvestor.values[msg.sender].length) {
             level = mapInvestor.values[msg.sender][index].level;
         }
+    }
+
+    function setEndTime(uint256 timestamp_) external onlyOwner {
+        activityEndTime = timestamp_;
+    }
+
+    function setCurrentTime(uint256 timestamp_) external onlyOwner {
+        _timestamp._setCurrentTime(timestamp_);
+    }
+
+    function getCurrentTime() external view returns (uint256) {
+        return _timestamp._getCurrentTime();
     }
 }

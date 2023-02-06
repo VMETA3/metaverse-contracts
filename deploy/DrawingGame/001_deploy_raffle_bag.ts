@@ -1,29 +1,37 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 import {setupUser} from '../../test/utils';
-import {ActivityReward} from '../../typechain';
+import {RaffleBag} from '../../typechain';
 import {getChainlinkConfig} from '../../utils/chainlink';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const {deploy, log} = hre.deployments;
   const {deployer} = await hre.getNamedAccounts();
-  const LogicName = 'ActivityReward';
-  const ProxyName = 'Proxy_ActivityReward';
+  const LogicName = 'RaffleBag';
 
-  const ActivityReward = await deploy('ActivityReward', {
+  const RaffleBag = await hre.deployments.deploy(LogicName, {
     from: deployer,
     log: true,
-    autoMine: true, // speed up deployment on local network (ganache, hardhat), no effect on live networks
+    autoMine: true,
   });
-  if (ActivityReward.newlyDeployed) {
-    log(`contract Land deployed at ${ActivityReward.address} using ${ActivityReward.receipt?.gasUsed} gas`);
+
+  hre.deployments.log(`contract RaffleBag deployed at ${RaffleBag.address}`);
+
+  const ProxyList = [
+    'Proxy_Active_' + LogicName,
+    'Proxy_Event_' + LogicName,
+    'Proxy_VIP_LV1_' + LogicName,
+    'Proxy_VIP_LV2_' + LogicName,
+    'Proxy_VIP_LV3_' + LogicName,
+  ];
+
+  for (let i = 0; i < ProxyList.length; i++) {
+    await deployProxy(hre, LogicName, ProxyList[i]);
   }
-  await deployProxy(hre, LogicName, ProxyName);
 };
 
 const deployProxy = async function (hre: HardhatRuntimeEnvironment, LogicName: string, ProxyName: string) {
   const {log, getExtendedArtifact, save} = hre.deployments;
-  const {owner, Administrator1, Administrator2} = await hre.getNamedAccounts();
+  const {Administrator1, Administrator2, owner} = await hre.getNamedAccounts();
   const Owners = [Administrator1, Administrator2, owner];
   const SignRequired = 2;
 
@@ -43,6 +51,7 @@ const deployProxy = async function (hre: HardhatRuntimeEnvironment, LogicName: s
   const Proxy = await hre.upgrades.deployProxy(Logic, [Owners, SignRequired, Chainlink.contract]);
   await Proxy.deployed();
   log(`contract ${ProxyName} deployed at ${Proxy.address} using ${Proxy.receipt?.gasUsed} gas`);
+
   const artifact = await getExtendedArtifact(LogicName);
   const proxyDeployments = {
     address: Proxy.address,
@@ -50,7 +59,7 @@ const deployProxy = async function (hre: HardhatRuntimeEnvironment, LogicName: s
   };
   await save(ProxyName, proxyDeployments);
 
-  const P = <ActivityReward>Proxy;
+  const P = <RaffleBag>Proxy;
   const Admin = await setupUser(owner, {P});
 
   // Set up chainlink
@@ -64,4 +73,4 @@ const deployProxy = async function (hre: HardhatRuntimeEnvironment, LogicName: s
 };
 
 export default func;
-func.tags = ['ActivityReward'];
+func.tags = ['RaffleBag'];

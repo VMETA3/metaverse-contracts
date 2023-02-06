@@ -5,6 +5,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 // Open Zeppelin libraries for controlling upgradability and access.
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {Time} from "../Lib/Time.sol";
 import "../Abstract/SafeOwnableUpgradeable.sol";
 
 struct InvestmentAccount {
@@ -38,27 +39,29 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
         uint256 tokenId;
     }
     mapping(address => NFTInfo) public wonNFT;
-    mapping(address => bool) private won;
+    mapping(address => bool) public won;
     NFTInfo[] public nfts; //nft token id list
     mapping(address => mapping(uint256 => bool)) nftExistPrizePool;
 
     uint256 public distributedNFTs;
     uint256 public drawRounds; // how many round draw
-    uint256 public lastDrawTime;
     mapping(address => uint256) public addressWeightMap;
 
     uint256 public startTime;
     uint256 public endTime;
 
-    event Draw(address indexed from, uint256 indexed time, uint256 paticipantsNumber);
+    // Control timestamp
+    using Time for Time.Timestamp;
+    Time.Timestamp private _timestamp;
+
+    event Draw(address indexed from, address[] winners, address[] contactAddressList, uint256[] tokenIdList);
     event TakeOutNFT(address indexed from, address contractAddress, uint256 tokenId);
 
     //chainlink configure
-    uint64 public subscriptionId;
+    VRFCoordinatorV2Interface COORDINATOR;
     bytes32 public keyHash;
     uint32 public callbackGasLimit;
-    VRFCoordinatorV2Interface COORDINATOR;
-    uint32 public numWords;
+    uint64 public subscriptionId;
     uint16 requestConfirmations;
     //chainlink related parameter
     uint256 public lastRequestId;
@@ -75,47 +78,46 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     function initialize(
-        string memory name,
         address[] memory owners,
         uint8 signRequred,
-        address investmentAddress_,
-        //chainlink config
-        address vrfCoordinatorAddress_,
-        uint32 callbackGasLimit_,
-        uint64 subscribeId_,
-        bytes32 keyHash_
+        address vrfCoordinatorAddress_
     ) public initializer {
-        __VRFConsumerBaseV2_init(vrfCoordinatorAddress_);
-        __Ownable_init(owners, signRequred);
-
-        investmentAddress = investmentAddress_;
         //chainlink
-        callbackGasLimit = callbackGasLimit_;
-        keyHash = keyHash_;
-        subscriptionId = subscribeId_;
+        __VRFConsumerBaseV2_init(vrfCoordinatorAddress_);
         COORDINATOR = VRFCoordinatorV2Interface(vrfCoordinatorAddress_);
 
-        lastDrawTime = 0;
-        numWords = 30;
-        requestConfirmations = 3;
+        __Ownable_init(owners, signRequred);
 
         DOMAIN = keccak256(
-            abi.encode(
-                keccak256("Domain(string name,uint256 chainId,address verifyingContract)"),
-                keccak256(bytes(name)),
-                block.chainid,
-                address(this)
-            )
+            abi.encode(keccak256("Domain(uint256 chainId,address verifyingContract)"), block.chainid, address(this))
         );
     }
 
     modifier checkDrawTime() {
-        require(block.timestamp < endTime, "DrawingGame: activity ended");
-        require(getWeekday(block.timestamp) == 0, "DrawingGame: only sunday can draw");
-        require(getHourInDay(block.timestamp) == 9, "DrawingGame: only nince am can draw");
-        require(getWeekday(block.timestamp - startTime) > 3, "DrawingGame: wait for next week");
-        require(block.timestamp - lastDrawTime >= SECONDS_FOR_WEEK, "DrawingGame: has been drawn recently");
+        uint256 time = _timestamp._getCurrentTime();
+        require(startTime > 0 && time > startTime, "DrawingGame: activity not start");
+        require(time < endTime, "DrawingGame: activity ended");
+        //require(getWeekday(time) == 0, "DrawingGame: only sunday can draw");
+        //require(getHourInDay(time) == 9, "DrawingGame: only nince am can draw");
+        //require(time - startTime > 3 * SECONDS_FOR_DAY, "DrawingGame: wait for next week");
+        //require(time - lastDrawTime >= SECONDS_FOR_WEEK, "DrawingGame: has been drawn recently");
         _;
+    }
+
+    function setChainlink(
+        uint32 callbackGasLimit_,
+        uint64 subscribeId_,
+        bytes32 keyHash_,
+        uint16 requestConfirmations_
+    ) public onlyOwner {
+        callbackGasLimit = callbackGasLimit_;
+        subscriptionId = subscribeId_;
+        keyHash = keyHash_;
+        requestConfirmations = requestConfirmations_;
+    }
+
+    function setInvestment(address investmentAddress_) public onlyOwner {
+        investmentAddress = investmentAddress_;
     }
 
     function depositNFTs(address[] memory contractAddresses, uint256[] memory tokenIds) external onlyOwner {
@@ -144,56 +146,33 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
         }
     }
 
-    function drawByManager(address[] memory winners) external checkDrawTime onlyOwner {
-        require(winners.length <= 30, "DrawingGame: limit 30 winners per round");
-        for (uint256 i = 0; i < winners.length && nfts.length > distributedNFTs; i++) {
-            if (won[winners[i]]) {
-                // ignore people who have won NFT
-                continue;
-            }
-
-            wonNFT[winners[i]] = NFTInfo(nfts[distributedNFTs].contractAddress, nfts[distributedNFTs].tokenId);
-            nftExistPrizePool[wonNFT[winners[i]].contractAddress][wonNFT[winners[i]].tokenId] = false;
-            distributedNFTs++;
-        }
-
-        emit Draw(msg.sender, block.timestamp, winners.length);
-    }
-
     function _draw(uint256[] memory randomNumbers) internal checkDrawTime {
         (address[] memory paticipants, uint256 totalWeight) = getParticipants();
-        uint256 left = paticipants.length;
-        require(left > 0, "DrawingGame: no paticipants");
+        require(paticipants.length > 0, "DrawingGame: no paticipants");
 
-        for (uint256 i = 0; i < 30 && left > 0 && nfts.length > distributedNFTs; i++) {
+        address[] memory contractAddressList = new address[](randomNumbers.length);
+        uint256[] memory tokenIdList = new uint256[](randomNumbers.length);
+        address[] memory winners = new address[](randomNumbers.length);
+        for (uint256 i = 0; i < randomNumbers.length && nfts.length > distributedNFTs; i++) {
             uint256 num = randomNumbers[i] % totalWeight;
-            (address addr, uint256 index) = whoWin(paticipants, num);
-            wonNFT[addr] = nfts[distributedNFTs];
-            totalWeight -= addressWeightMap[addr];
-            paticipants[index] = paticipants[paticipants.length - 1];
+            address winner = whoWin(paticipants, num);
+            if (winner == address(0)) {
+                break;
+            }
+            totalWeight -= addressWeightMap[winner];
 
-            delete paticipants[paticipants.length - 1];
-            nftExistPrizePool[wonNFT[addr].contractAddress][wonNFT[addr].tokenId] = false;
+            NFTInfo memory nft = nfts[distributedNFTs];
+            IERC721(nft.contractAddress).transferFrom(address(this), winner, nft.tokenId);
+            won[winner] = true;
+            winners[i] = winner;
+
+            contractAddressList[i] = nfts[distributedNFTs].contractAddress;
+            tokenIdList[i] = nfts[distributedNFTs].tokenId;
             distributedNFTs++;
-            left--;
         }
 
-        lastDrawTime = block.timestamp;
         drawRounds++;
-        emit Draw(msg.sender, block.timestamp, paticipants.length);
-    }
-
-    function takeOutNFT() external {
-        NFTInfo memory nftInfo = wonNFT[msg.sender];
-        require(nftInfo.contractAddress != address(0), "DrawingGame: you not won nft");
-        require(
-            IERC721(nftInfo.contractAddress).ownerOf(nftInfo.tokenId) != msg.sender,
-            "DrawingGame: you have taken nft"
-        );
-
-        IERC721(nftInfo.contractAddress).transferFrom(address(this), msg.sender, nftInfo.tokenId);
-        delete wonNFT[msg.sender];
-        emit TakeOutNFT(msg.sender, nftInfo.contractAddress, nftInfo.tokenId);
+        emit Draw(msg.sender, winners, contractAddressList, tokenIdList);
     }
 
     function getParticipants() internal returns (address[] memory, uint256) {
@@ -227,16 +206,22 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
         return nfts.length;
     }
 
-    function whoWin(address[] memory accounts, uint256 num) internal view returns (address, uint256) {
+    function whoWin(address[] memory accounts, uint256 num) internal view returns (address) {
         uint256 count = 0;
-        for (uint256 i = 0; i < accounts.length && accounts[i] != address(0); i++) {
+        for (uint256 i = 0; i < accounts.length; i++) {
+            if (accounts[i] == address(0)) {
+                continue;
+            }
+
             count += addressWeightMap[accounts[i]];
             if (count >= num) {
-                return (accounts[i], i);
+                address winner = accounts[i];
+                delete accounts[i];
+                return (winner);
             }
         }
 
-        return (address(0), 0);
+        return (address(0));
     }
 
     function calculteWeight(uint8 level) internal pure returns (uint256) {
@@ -267,12 +252,12 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
     }
 
     function setEndTime(uint256 endTime_) external onlyOwner {
-        require(endTime_ > block.timestamp);
+        require(endTime_ > _timestamp._getCurrentTime());
         endTime = endTime_;
     }
 
     // chainlink
-    function requestRandomWordsForDraw() external checkDrawTime onlyOwner returns (uint256 requestId) {
+    function requestRandomWordsForDraw(uint32 numWords) external checkDrawTime onlyOwner returns (uint256 requestId) {
         // Will revert if subscription is not set and funded.
         requestId = COORDINATOR.requestRandomWords(
             keyHash,
@@ -293,5 +278,13 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
         requests[requestId_].randomWords = randomWords_;
         _draw(randomWords_);
         emit RequestFulfilled(requestId_, randomWords_);
+    }
+
+    function setCurrentTime(uint256 timestamp_) external onlyOwner {
+        _timestamp._setCurrentTime(timestamp_);
+    }
+
+    function getCurrentTime() external view returns (uint256) {
+        return _timestamp._getCurrentTime();
     }
 }
