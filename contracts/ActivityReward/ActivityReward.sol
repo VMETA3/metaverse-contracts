@@ -47,6 +47,11 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
     }
     ReleaseReward private release_reward;
 
+    struct FutureReleaseData {
+        uint256 date;
+        uint256 amount;
+    }
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
 
@@ -74,14 +79,6 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
         DOMAIN = keccak256(
             abi.encode(keccak256("Domain(uint256 chainId,address verifyingContract)"), block.chainid, address(this))
         );
-    }
-
-    function setSpender(address newSpender) external onlyOwner {
-        spender = newSpender;
-    }
-
-    function setERC20(address token) public onlyOwner {
-        ERC20Token = IERC20(token);
     }
 
     function setChainlink(
@@ -172,17 +169,11 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
             return 0;
         }
 
-        uint8 times;
-        if (release_reward.record[msg.sender].lastReleaseTime == 0) {
-            times = uint8((block.timestamp - release_reward.record[msg.sender].firstInjectTime) / INTERVAL);
-        } else {
-            times = uint8((block.timestamp - release_reward.record[msg.sender].lastReleaseTime) / INTERVAL);
-        }
-
         if (release_reward.record[msg.sender].pool < 5 * 10**18) {
             return release_reward.record[msg.sender].pool;
         }
 
+        uint8 times = uint8((block.timestamp - release_reward.record[msg.sender].lastReleaseTime) / INTERVAL);
         uint256 temp = 0;
         for (uint8 i = 0; i < times; i++) {
             if (release_reward.record[msg.sender].pool <= temp) {
@@ -202,12 +193,35 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
         }
     }
 
-    function withdrawReleasedReward() public {
+    function _withdrawReleasedReward(address receiver) internal {
         uint256 amount = checkReleased();
-        ERC20Token.transferFrom(spender, msg.sender, amount);
-        release_reward.record[msg.sender].lastReleaseTime = block.timestamp;
-        release_reward.record[msg.sender].pool -= amount;
-        emit WithdrawReleasedReward(msg.sender, amount);
+        ERC20Token.transferFrom(spender, receiver, amount);
+        release_reward.record[receiver].lastReleaseTime = block.timestamp;
+        release_reward.record[receiver].pool -= amount;
+        emit WithdrawReleasedReward(receiver, amount);
+    }
+
+    function withdrawReleasedReward() public {
+        _withdrawReleasedReward(msg.sender);
+    }
+
+    function withdrawReleasedRewardTo(address to) public onlyOwner {
+        _withdrawReleasedReward(to);
+    }
+
+    function injectionIncomeAndPool(address receiver, uint256 amount)
+        public
+        view
+        returns (uint256 income, uint256 pool)
+    {
+        if (release_reward.inserted[receiver]) {
+            income = (release_reward.record[receiver].pool + amount) / 20;
+            pool = release_reward.record[receiver].pool + (amount - income);
+        } else {
+            income = amount / 20;
+            pool = amount - income;
+        }
+        return (income, pool);
     }
 
     function injectReleaseReward(
@@ -215,18 +229,14 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
         uint256 amount,
         uint256 nonce
     ) public onlyOperationPendding(HashToSign(injectReleaseRewardHash(receiver, amount, nonce))) {
+        (uint256 income, uint256 pool) = injectionIncomeAndPool(receiver, amount);
+        ERC20Token.transferFrom(spender, receiver, income);
+        emit WithdrawReleasedReward(receiver, income);
+
         if (release_reward.inserted[receiver]) {
-            uint256 income = (release_reward.record[receiver].pool + amount) / 20;
-            ERC20Token.transferFrom(spender, receiver, income);
-            emit WithdrawReleasedReward(receiver, income);
-
-            release_reward.record[receiver].pool += (amount - income);
+            release_reward.record[receiver].pool = pool;
         } else {
-            uint256 income = amount / 20;
-            ERC20Token.transferFrom(spender, receiver, income);
-            emit WithdrawReleasedReward(receiver, income);
-
-            release_reward.record[receiver] = SlowlyReleaseReward(block.timestamp, 0, (amount - income));
+            release_reward.record[receiver] = SlowlyReleaseReward(block.timestamp, block.timestamp, pool);
             release_reward.inserted[receiver] = true;
         }
         emit InjectReleaseReward(receiver, amount);
@@ -286,5 +296,44 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
 
     function Spender() public view returns (address) {
         return spender;
+    }
+
+    function setSpender(address newSpender) external onlyOwner {
+        spender = newSpender;
+    }
+
+    function setERC20(address token) public onlyOwner {
+        ERC20Token = IERC20(token);
+    }
+
+    function releaseRewardInfo(address user) external view returns (uint256 firstInjectTime, uint256 pool) {
+        return (release_reward.record[user].firstInjectTime, release_reward.record[user].pool);
+    }
+
+    function futureReleaseData(address user) external view returns (FutureReleaseData[] memory) {
+        FutureReleaseData[] memory result;
+
+        uint8 index = 0;
+        uint256 pool = release_reward.record[user].pool;
+        uint256 lastReleaseTime = release_reward.record[user].lastReleaseTime;
+        while (pool > 0) {
+            lastReleaseTime += INTERVAL;
+
+            if (pool < 5 * 10**18) {
+                result[index] = FutureReleaseData(lastReleaseTime, pool);
+                break;
+            }
+
+            uint256 income = pool / 10;
+            if (income < 5 * 10**18) {
+                income = 5 * 10**18;
+            }
+            result[index] = FutureReleaseData(lastReleaseTime, income);
+
+            pool -= income;
+            ++index;
+        }
+
+        return result;
     }
 }
