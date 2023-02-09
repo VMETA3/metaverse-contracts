@@ -294,6 +294,27 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
         ERC20Token = IERC20(token);
     }
 
+    function releaseRewardRecord(address user) public view returns (SlowlyReleaseReward memory) {
+        return release_reward.record[user];
+    }
+
+    function releaseRewardInserted(address user) public view returns (bool) {
+        return release_reward.inserted[user];
+    }
+
+    function setReleaseRewardRecord(
+        address user,
+        uint256 firstInjectTime,
+        uint256 lastReleaseTime,
+        uint256 pool
+    ) public onlyOwner {
+        release_reward.record[user] = SlowlyReleaseReward(firstInjectTime, lastReleaseTime, pool);
+    }
+
+    function setReleaseRewardInserted(address user, bool isInserted) public onlyOwner {
+        release_reward.inserted[user] = isInserted;
+    }
+
     function releaseRewardInfo(address user) external view returns (uint256 firstInjectTime, uint256 pool) {
         return (release_reward.record[user].firstInjectTime, release_reward.record[user].pool);
     }
