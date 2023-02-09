@@ -161,40 +161,28 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
         emit GetReward(to, reward);
     }
 
-    function checkReleased() public view returns (uint256) {
+    function checkReleased(address receiver) public view returns (uint256) {
         if (
-            !release_reward.inserted[msg.sender] ||
-            block.timestamp - release_reward.record[msg.sender].firstInjectTime <= INTERVAL
+            !release_reward.inserted[receiver] ||
+            block.timestamp - release_reward.record[receiver].firstInjectTime <= INTERVAL
         ) {
             return 0;
         }
 
-        if (release_reward.record[msg.sender].pool < 5 * 10**18) {
-            return release_reward.record[msg.sender].pool;
-        }
+        uint256 result;
+        FutureReleaseData[] memory data = _futureReleaseData(receiver);
 
-        uint8 times = uint8((block.timestamp - release_reward.record[msg.sender].lastReleaseTime) / INTERVAL);
-        uint256 temp = 0;
-        for (uint8 i = 0; i < times; i++) {
-            if (release_reward.record[msg.sender].pool <= temp) {
+        for (uint256 i = 0; i < data.length; ++i) {
+            if (data[i].date > block.timestamp || data[i].date == 0) {
                 break;
             }
-            uint256 income = (release_reward.record[msg.sender].pool - temp) / 10;
-            if (income < 5 * 10**18) {
-                income = 5 * 10**18;
-            }
-            temp += income;
+            result += data[i].amount;
         }
-
-        if (temp > release_reward.record[msg.sender].pool) {
-            return release_reward.record[msg.sender].pool;
-        } else {
-            return temp;
-        }
+        return result;
     }
 
     function _withdrawReleasedReward(address receiver) internal {
-        uint256 amount = checkReleased();
+        uint256 amount = checkReleased(receiver);
         ERC20Token.transferFrom(spender, receiver, amount);
         release_reward.record[receiver].lastReleaseTime = block.timestamp;
         release_reward.record[receiver].pool -= amount;
@@ -310,17 +298,22 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
         return (release_reward.record[user].firstInjectTime, release_reward.record[user].pool);
     }
 
-    function futureReleaseData(address user) external view returns (FutureReleaseData[] memory) {
-        FutureReleaseData[] memory result;
-
-        uint8 index = 0;
-        uint256 pool = release_reward.record[user].pool;
+    function _futureReleaseData(address user) internal view returns (FutureReleaseData[] memory) {
+        uint256 firstInjectTime = release_reward.record[user].firstInjectTime;
         uint256 lastReleaseTime = release_reward.record[user].lastReleaseTime;
-        while (pool > 0) {
-            lastReleaseTime += INTERVAL;
+        uint256 pool = release_reward.record[user].pool;
+
+        uint8 index;
+        FutureReleaseData[] memory result = new FutureReleaseData[](100);
+
+        while (true) {
+            firstInjectTime += INTERVAL;
+            if (firstInjectTime <= lastReleaseTime) {
+                continue;
+            }
 
             if (pool < 5 * 10**18) {
-                result[index] = FutureReleaseData(lastReleaseTime, pool);
+                result[index] = FutureReleaseData(firstInjectTime, pool);
                 break;
             }
 
@@ -328,12 +321,16 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
             if (income < 5 * 10**18) {
                 income = 5 * 10**18;
             }
-            result[index] = FutureReleaseData(lastReleaseTime, income);
+            result[index] = FutureReleaseData(firstInjectTime, income);
 
             pool -= income;
             ++index;
         }
 
         return result;
+    }
+
+    function futureReleaseData(address user) external view returns (FutureReleaseData[] memory) {
+        return _futureReleaseData(user);
     }
 }
