@@ -3,7 +3,6 @@ import {ethers, deployments, getUnnamedAccounts, getNamedAccounts, network, upgr
 import {setupUser, setupUsers} from '../utils';
 import {DrawingGame, InvestmentMock, VRFCoordinatorV2Mock, GameItem} from '../../typechain';
 import {time} from '@nomicfoundation/hardhat-network-helpers';
-import {BigNumber} from 'ethers';
 
 const zeroAddress = ethers.constants.AddressZero;
 
@@ -88,7 +87,8 @@ describe('DrawingGame contract', function () {
         VRFCoordinatorV2.address,
         [users[0].address, users[1].address],
         [GameItem.address, GameItem.address],
-        [0, 1]
+        [0, 1],
+        1
       );
 
     expect(await Proxy.distributedNFTs()).to.be.eq(2);

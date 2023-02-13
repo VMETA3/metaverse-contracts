@@ -54,8 +54,13 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
     using Time for Time.Timestamp;
     Time.Timestamp private _timestamp;
 
-    event Draw(address indexed from, address[] winners, address[] contactAddressList, uint256[] tokenIdList);
-    event TakeOutNFT(address indexed from, address contractAddress, uint256 tokenId);
+    event Draw(
+        address indexed from,
+        address[] winners,
+        address[] contactAddressList,
+        uint256[] tokenIdList,
+        uint256 requestId
+    );
 
     //chainlink configure
     VRFCoordinatorV2Interface COORDINATOR;
@@ -146,7 +151,7 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
         }
     }
 
-    function _draw(uint256[] memory randomNumbers) internal checkDrawTime {
+    function _draw(uint256 requestId, uint256[] memory randomNumbers) internal checkDrawTime {
         (address[] memory paticipants, uint256 totalWeight) = getParticipants();
         require(paticipants.length > 0, "DrawingGame: no paticipants");
 
@@ -172,7 +177,7 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
         }
 
         drawRounds++;
-        emit Draw(msg.sender, winners, contractAddressList, tokenIdList);
+        emit Draw(msg.sender, winners, contractAddressList, tokenIdList, requestId);
     }
 
     function getParticipants() internal returns (address[] memory, uint256) {
@@ -276,7 +281,7 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
         require(requests[requestId_].exists, "DrawingGame: request not found");
         requests[requestId_].fulfilled = true;
         requests[requestId_].randomWords = randomWords_;
-        _draw(randomWords_);
+        _draw(requestId_, randomWords_);
         emit RequestFulfilled(requestId_, randomWords_);
     }
 
