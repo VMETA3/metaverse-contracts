@@ -115,7 +115,7 @@ abstract contract SafeOwnableUpgradeable is Initializable, ContextUpgradeable {
      * @dev Transfers ownership of the contract to a new account (`newOwner`).
      * Can only be called by the current owner.
      */
-    function transferOwnership(address newOwner) public virtual onlyOwner {
+    function transferOwnership2(address newOwner) public virtual onlyOwner {
         require(newOwner != address(0), "SafeOwnable: new owner is the zero address");
         require(SafeOwnableStorage.layout().ownersIndex[newOwner] == 0, "SafeOwnable: new owner already exists");
 
