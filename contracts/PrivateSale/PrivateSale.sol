@@ -308,7 +308,7 @@ contract PrivateSale is Initializable, SafeOwnableUpgradeable, ReentrancyGuardUp
     function _witdrawVM3(uint64 saleNumber) internal {
         PrivateSaleStorage.Layout storage l = PrivateSaleStorage.layout();
 
-        PrivateSaleStorage.AssetInfo memory assetInfo = l.userAssertInfos[msg.sender][saleNumber];
+        PrivateSaleStorage.AssetInfo storage assetInfo = l.userAssertInfos[msg.sender][saleNumber];
         require(assetInfo.saleNumber > 0, "PrivateSale: not exist");
         require(!assetInfo.puased, "PrivateSale: withdraw puased");
         require(!l.saleList[assetInfo.saleNumber].puased, "PrivateSale: sale puased");
