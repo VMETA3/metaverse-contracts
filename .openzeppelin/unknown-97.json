@@ -125,6 +125,16 @@
       "address": "0xb443E36Df12703d129E0a14233658e32c6c9F6a9",
       "txHash": "0x8290d9ba8977334633d977d48c0c0c2f0921068afa564f5c0f5eae3bc86c3e46",
       "kind": "uups"
+    },
+    {
+      "address": "0xF12C88Acaf33133a7F67e96c8F419635df66aBE9",
+      "txHash": "0x54885154763f56f1d75aab536ee66d3f7c5b6c0ee470abe0ebb2529847e5b0ca",
+      "kind": "uups"
+    },
+    {
+      "address": "0x2B66506A7C754205E7fD62D60922d67Bd153E852",
+      "txHash": "0x671c168e5700dd0b1ad8ab29d5124614d9c61f2c5663f9e7211c875639791ac2",
+      "kind": "uups"
     }
   ],
   "impls": {
@@ -2681,6 +2691,352 @@
               }
             ],
             "numberOfBytes": "32"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint32": {
+            "label": "uint32",
+            "numberOfBytes": "4"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "6afd0434a1a3b8da999b72cacb9da06abb35fa69506a4f8b15def068cd1e891c": {
+      "address": "0xe3C3a7ed35562579b2fFaD8d6cec23585EB0aC96",
+      "txHash": "0x13bc490affd0e4a1f24b372a23705906b6a8c60065f0857dbf7b014b6e2dfedf",
+      "layout": {
+        "solcVersion": "0.8.9",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ERC1967UpgradeUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/ERC1967/ERC1967UpgradeUpgradeable.sol:211"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "UUPSUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol:107"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owners",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_array(t_address)6_storage",
+            "contract": "SafeOwnableUpgradeable",
+            "src": "contracts/Abstract/SafeOwnableUpgradeable.sol:18"
+          },
+          {
+            "label": "_ownersIndex",
+            "offset": 0,
+            "slot": "157",
+            "type": "t_mapping(t_address,t_uint8)",
+            "contract": "SafeOwnableUpgradeable",
+            "src": "contracts/Abstract/SafeOwnableUpgradeable.sol:19"
+          },
+          {
+            "label": "_numOwners",
+            "offset": 0,
+            "slot": "158",
+            "type": "t_uint8",
+            "contract": "SafeOwnableUpgradeable",
+            "src": "contracts/Abstract/SafeOwnableUpgradeable.sol:20"
+          },
+          {
+            "label": "signRequired",
+            "offset": 1,
+            "slot": "158",
+            "type": "t_uint8",
+            "contract": "SafeOwnableUpgradeable",
+            "src": "contracts/Abstract/SafeOwnableUpgradeable.sol:23"
+          },
+          {
+            "label": "operationsStatus",
+            "offset": 0,
+            "slot": "159",
+            "type": "t_mapping(t_bytes32,t_enum(OpStatus)5566)",
+            "contract": "SafeOwnableUpgradeable",
+            "src": "contracts/Abstract/SafeOwnableUpgradeable.sol:24"
+          },
+          {
+            "label": "nonce",
+            "offset": 0,
+            "slot": "160",
+            "type": "t_uint256",
+            "contract": "SafeOwnableUpgradeable",
+            "src": "contracts/Abstract/SafeOwnableUpgradeable.sol:26"
+          },
+          {
+            "label": "vrfCoordinator",
+            "offset": 0,
+            "slot": "161",
+            "type": "t_address",
+            "contract": "VRFConsumerBaseV2Upgradeable",
+            "src": "contracts/Chainlink/VRFConsumerBaseV2Upgradeable.sol:101"
+          },
+          {
+            "label": "ERC20Token",
+            "offset": 0,
+            "slot": "162",
+            "type": "t_contract(IERC20)3037",
+            "contract": "ActivityReward",
+            "src": "contracts/ActivityReward/ActivityReward.sol:19"
+          },
+          {
+            "label": "spender",
+            "offset": 0,
+            "slot": "163",
+            "type": "t_address",
+            "contract": "ActivityReward",
+            "src": "contracts/ActivityReward/ActivityReward.sol:20"
+          },
+          {
+            "label": "DOMAIN",
+            "offset": 0,
+            "slot": "164",
+            "type": "t_bytes32",
+            "contract": "ActivityReward",
+            "src": "contracts/ActivityReward/ActivityReward.sol:21"
+          },
+          {
+            "label": "subscriptionId",
+            "offset": 0,
+            "slot": "165",
+            "type": "t_uint64",
+            "contract": "ActivityReward",
+            "src": "contracts/ActivityReward/ActivityReward.sol:25"
+          },
+          {
+            "label": "COORDINATOR",
+            "offset": 8,
+            "slot": "165",
+            "type": "t_contract(VRFCoordinatorV2Interface)95",
+            "contract": "ActivityReward",
+            "src": "contracts/ActivityReward/ActivityReward.sol:26"
+          },
+          {
+            "label": "keyHash",
+            "offset": 0,
+            "slot": "166",
+            "type": "t_bytes32",
+            "contract": "ActivityReward",
+            "src": "contracts/ActivityReward/ActivityReward.sol:27"
+          },
+          {
+            "label": "callbackGasLimit",
+            "offset": 0,
+            "slot": "167",
+            "type": "t_uint32",
+            "contract": "ActivityReward",
+            "src": "contracts/ActivityReward/ActivityReward.sol:28"
+          },
+          {
+            "label": "requestConfirmations",
+            "offset": 4,
+            "slot": "167",
+            "type": "t_uint16",
+            "contract": "ActivityReward",
+            "src": "contracts/ActivityReward/ActivityReward.sol:29"
+          },
+          {
+            "label": "requests",
+            "offset": 0,
+            "slot": "168",
+            "type": "t_mapping(t_uint256,t_struct(RequestStatus)6026_storage)",
+            "contract": "ActivityReward",
+            "src": "contracts/ActivityReward/ActivityReward.sol:36"
+          },
+          {
+            "label": "release_reward",
+            "offset": 0,
+            "slot": "169",
+            "type": "t_struct(ReleaseReward)6048_storage",
+            "contract": "ActivityReward",
+            "src": "contracts/ActivityReward/ActivityReward.sol:48"
+          },
+          {
+            "label": "locked",
+            "offset": 0,
+            "slot": "171",
+            "type": "t_bool",
+            "contract": "ActivityReward",
+            "src": "contracts/ActivityReward/ActivityReward.sol:58"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_address)6_storage": {
+            "label": "address[6]",
+            "numberOfBytes": "192"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_contract(IERC20)3037": {
+            "label": "contract IERC20",
+            "numberOfBytes": "20"
+          },
+          "t_contract(VRFCoordinatorV2Interface)95": {
+            "label": "contract VRFCoordinatorV2Interface",
+            "numberOfBytes": "20"
+          },
+          "t_enum(OpStatus)5566": {
+            "label": "enum SafeOwnableUpgradeable.OpStatus",
+            "members": [
+              "OpDefault",
+              "OpPending",
+              "OpExecuted",
+              "OpCancel"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(SlowlyReleaseReward)6038_storage)": {
+            "label": "mapping(address => struct ActivityReward.SlowlyReleaseReward)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint8)": {
+            "label": "mapping(address => uint8)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_enum(OpStatus)5566)": {
+            "label": "mapping(bytes32 => enum SafeOwnableUpgradeable.OpStatus)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(RequestStatus)6026_storage)": {
+            "label": "mapping(uint256 => struct ActivityReward.RequestStatus)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(ReleaseReward)6048_storage": {
+            "label": "struct ActivityReward.ReleaseReward",
+            "members": [
+              {
+                "label": "record",
+                "type": "t_mapping(t_address,t_struct(SlowlyReleaseReward)6038_storage)",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "inserted",
+                "type": "t_mapping(t_address,t_bool)",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(RequestStatus)6026_storage": {
+            "label": "struct ActivityReward.RequestStatus",
+            "members": [
+              {
+                "label": "user",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "randomWord",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "fulfilled",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "exists",
+                "type": "t_bool",
+                "offset": 1,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_struct(SlowlyReleaseReward)6038_storage": {
+            "label": "struct ActivityReward.SlowlyReleaseReward",
+            "members": [
+              {
+                "label": "firstInjectTime",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "lastReleaseTime",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "pool",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
           },
           "t_uint16": {
             "label": "uint16",
