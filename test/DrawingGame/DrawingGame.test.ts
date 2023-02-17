@@ -54,7 +54,8 @@ describe('DrawingGame contract', function () {
     await Administrator1.Proxy.setInvestment(Investment.address);
     expect(await Proxy.investmentAddress()).to.be.eq(Investment.address);
 
-    for (let i = 0; i < 10; i++) {
+    const totalParticipants = 10;
+    for (let i = 0; i < totalParticipants; i++) {
       // Add investor
       const amount = ethers.utils.parseEther('100');
       await expect(users[i].Investment.deposit(amount))
@@ -75,8 +76,8 @@ describe('DrawingGame contract', function () {
     // Draw
     // modify network block timestamp
     const lastTime = await time.latest();
-    await Administrator1.Proxy.setStartTime(lastTime);
     await Administrator1.Proxy.setEndTime(lastTime + 24 * 60 * 60 * 180);
+    await Administrator1.Proxy.setStartTime(lastTime);
     await network.provider.send('evm_setNextBlockTimestamp', [1677402600]); //FIXME
     await Administrator1.Proxy.requestRandomWordsForDraw(2);
     expect(await VRFCoordinatorV2.s_nextRequestId()).to.be.equal(2);
