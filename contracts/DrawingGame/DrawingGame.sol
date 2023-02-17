@@ -152,18 +152,18 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
     }
 
     function _draw(uint256 requestId, uint256[] memory randomNumbers) internal checkDrawTime {
-        (address[] memory paticipants, uint256 totalWeight) = getParticipants();
-        require(paticipants.length > 0, "DrawingGame: no paticipants");
+        (address[] memory participants, uint256 totalWeight) = getParticipants();
 
         address[] memory contractAddressList = new address[](randomNumbers.length);
         uint256[] memory tokenIdList = new uint256[](randomNumbers.length);
         address[] memory winners = new address[](randomNumbers.length);
         for (uint256 i = 0; i < randomNumbers.length && nfts.length > distributedNFTs; i++) {
-            uint256 num = randomNumbers[i] % totalWeight;
-            address winner = whoWin(paticipants, num);
-            if (winner == address(0)) {
+            if (totalWeight == 0) {
                 break;
             }
+
+            uint256 num = randomNumbers[i] % totalWeight;
+            address winner = whoWin(participants, num);
             totalWeight -= addressWeightMap[winner];
 
             NFTInfo memory nft = nfts[distributedNFTs];
