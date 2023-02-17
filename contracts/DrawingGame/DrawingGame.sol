@@ -251,13 +251,13 @@ contract DrawingGame is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, 
 
     //general setting
     function setStartTime(uint256 startTime_) external onlyOwner {
-        require(startTime == 0, "DrawingGame: start time already set");
+        require(startTime_ <= endTime, "DrawingGame: startTime must be less than endTime");
 
         startTime = startTime_;
     }
 
     function setEndTime(uint256 endTime_) external onlyOwner {
-        require(endTime_ > _timestamp._getCurrentTime());
+        require(endTime_ > startTime, "DrawingGame: endTime must be greater than startTime");
         endTime = endTime_;
     }
 
