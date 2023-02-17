@@ -50,11 +50,13 @@ const deployProxy = async function (hre: HardhatRuntimeEnvironment, LogicName: s
   };
   await save(ProxyName, proxyDeployments);
 
-  const P = <ActivityReward>Proxy;
-  const Admin = await setupUser(owner, {P});
+  const ActivityReward = <ActivityReward>Proxy;
+  const Admin = await setupUser(owner, {ActivityReward});
+  const Admin1 = await setupUser(Administrator1, { ActivityReward })
+  const Admin2 = await setupUser(Administrator2, { ActivityReward })
 
   // Set up chainlink
-  await Admin.P.setChainlink(
+  await Admin.ActivityReward.setChainlink(
     hre.ethers.BigNumber.from(Chainlink.gasLimit),
     hre.ethers.BigNumber.from(Chainlink.subscribeId),
     Chainlink.keyHash,

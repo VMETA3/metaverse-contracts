@@ -1,13 +1,13 @@
-import {expect} from '../chai-setup';
-import {ethers, upgrades, deployments, getUnnamedAccounts, getNamedAccounts, network} from 'hardhat';
-import {TestERC20, ActivityReward, VRFCoordinatorV2Mock} from '../../typechain';
-import {setupUser, setupUsers} from '../utils';
+import { expect } from '../chai-setup';
+import { ethers, upgrades, deployments, getUnnamedAccounts, getNamedAccounts, network } from 'hardhat';
+import { TestERC20, ActivityReward, VRFCoordinatorV2Mock } from '../../typechain';
+import { setupUser, setupUsers } from '../utils';
 import web3 from 'web3';
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture('ActivityReward');
   await deployments.fixture('TestERC20');
-  const {deployer, Administrator1, Administrator2} = await getNamedAccounts();
+  const { deployer, Administrator1, Administrator2 } = await getNamedAccounts();
 
   const ActivityReward = await ethers.getContractFactory('ActivityReward');
   const VRFCoordinatorV2MockFactory = await ethers.getContractFactory('VRFCoordinatorV2Mock');
@@ -48,11 +48,11 @@ const setup = deployments.createFixture(async () => {
 describe('ActivityReward', () => {
   describe('Proxy information', async () => {
     it('The logical contract data is empty', async () => {
-      const {ActivityReward} = await setup();
+      const { ActivityReward } = await setup();
       expect(await ActivityReward.ERC20Token()).to.be.eq('0x0000000000000000000000000000000000000000');
     });
     it('The agent contract has the correct information', async () => {
-      const {Proxy, deployer, Administrator1, Administrator2, ERC20Token} = await setup();
+      const { Proxy, deployer, Administrator1, Administrator2, ERC20Token } = await setup();
       await Administrator1.Proxy.setERC20(ERC20Token.address);
       await Administrator1.Proxy.setSpender(deployer.address);
       expect(await Proxy.ERC20Token()).to.be.eq(ERC20Token.address);
@@ -67,7 +67,7 @@ describe('ActivityReward', () => {
 
   describe('Instant rewards', async () => {
     it('It should succeed in getFreeReward', async () => {
-      const {deployer, users, Administrator1, Administrator2, Proxy, ERC20Token} = await setup();
+      const { deployer, users, Administrator1, Administrator2, Proxy, ERC20Token } = await setup();
       await Administrator1.Proxy.setERC20(ERC20Token.address);
       await Administrator1.Proxy.setSpender(deployer.address);
       const User = users[8];
@@ -93,7 +93,7 @@ describe('ActivityReward', () => {
     });
 
     it('It should succeed in getMultipleReward', async () => {
-      const {deployer, users, Administrator1, Administrator2, Proxy, VRFCoordinatorV2Mock, ERC20Token} = await setup();
+      const { deployer, users, Administrator1, Administrator2, Proxy, VRFCoordinatorV2Mock, ERC20Token } = await setup();
       await Administrator1.Proxy.setChainlink(250000000, 1, ethers.constants.HashZero, 3);
       await Administrator1.Proxy.setERC20(ERC20Token.address);
       await Administrator1.Proxy.setSpender(deployer.address);
@@ -129,7 +129,7 @@ describe('ActivityReward', () => {
     const SecondsForMonth = SecondsForDay * 30;
 
     it('The injection pool needs to be released once', async () => {
-      const {deployer, Proxy, ERC20Token, users, Administrator1, Administrator2} = await setup();
+      const { deployer, Proxy, ERC20Token, users, Administrator1, Administrator2 } = await setup();
       await Administrator1.Proxy.setERC20(ERC20Token.address);
       await Administrator1.Proxy.setSpender(deployer.address);
       const User = users[8];
@@ -161,7 +161,7 @@ describe('ActivityReward', () => {
     });
 
     it('Release 10%', async () => {
-      const {deployer, Proxy, users, Administrator1, Administrator2, ERC20Token} = await setup();
+      const { deployer, Proxy, users, Administrator1, Administrator2, ERC20Token } = await setup();
       await Administrator1.Proxy.setERC20(ERC20Token.address);
       await Administrator1.Proxy.setSpender(deployer.address);
       const User = users[8];
@@ -184,19 +184,19 @@ describe('ActivityReward', () => {
         .withArgs(User.address, OnehundredToken);
 
       // Non-existent user
-      expect(await User.Proxy.checkReleased()).to.be.eq(ethers.BigNumber.from('0'));
+      expect(await User.Proxy.checkReleased(User.address)).to.be.eq(ethers.BigNumber.from('0'));
 
       // Not released now
-      expect(await User.Proxy.checkReleased()).to.be.eq(ethers.BigNumber.from('0'));
+      expect(await User.Proxy.checkReleased(User.address)).to.be.eq(ethers.BigNumber.from('0'));
 
       // modify network block timestamp
       await network.provider.send('evm_increaseTime', [SecondsForMonth + 1]);
       await deployer.ERC20Token.approve(Proxy.address, OnehundredToken);
-      expect(await User.Proxy.checkReleased()).to.be.eq(NinetyPointFiveToken);
+      expect(await User.Proxy.checkReleased(User.address)).to.be.eq(NinetyPointFiveToken);
     });
 
     it('When the number of releases is less than 5, release 5', async () => {
-      const {deployer, Proxy, users, Administrator1, Administrator2, ERC20Token} = await setup();
+      const { deployer, Proxy, users, Administrator1, Administrator2, ERC20Token } = await setup();
       await Administrator1.Proxy.setERC20(ERC20Token.address);
       await Administrator1.Proxy.setSpender(deployer.address);
       const User = users[8];
@@ -220,11 +220,11 @@ describe('ActivityReward', () => {
       // next month
       await network.provider.send('evm_increaseTime', [SecondsForMonth + 1]);
       await deployer.ERC20Token.approve(Proxy.address, FortyFiveToken);
-      expect(await User.Proxy.checkReleased()).to.be.eq(FiveToken);
+      expect(await User.Proxy.checkReleased(User.address)).to.be.eq(FiveToken);
     });
 
     it('When the pool not enough 5, release all', async () => {
-      const {deployer, Proxy, users, Administrator1, Administrator2, ERC20Token} = await setup();
+      const { deployer, Proxy, users, Administrator1, Administrator2, ERC20Token } = await setup();
       await Administrator1.Proxy.setERC20(ERC20Token.address);
       await Administrator1.Proxy.setSpender(deployer.address);
       const User = users[8];
@@ -247,7 +247,53 @@ describe('ActivityReward', () => {
       // next month
       await network.provider.send('evm_increaseTime', [SecondsForMonth + 1]);
       await deployer.ERC20Token.approve(Proxy.address, fourToken);
-      expect(await User.Proxy.checkReleased()).to.be.eq(threePointEightToken);
+      expect(await User.Proxy.checkReleased(User.address)).to.be.eq(threePointEightToken);
+    });
+
+    it('New features in version 2', async () => {
+      const { deployer, Proxy, users, Administrator1, Administrator2, ERC20Token } = await setup();
+      await Administrator1.Proxy.setERC20(ERC20Token.address);
+      await Administrator1.Proxy.setSpender(deployer.address);
+      const User = users[8];
+      const nonce = 0;
+      const OnehundredToken = ethers.utils.parseEther('100');
+      const NinetyFiveToken = ethers.utils.parseEther('95');
+      const FiveToken = ethers.utils.parseEther('5');
+      const NinetyPointFiveToken = ethers.utils.parseEther('9.5');
+
+      await deployer.ERC20Token.approve(Proxy.address, OnehundredToken);
+
+      // Injection income and pool
+      expect((await Proxy.injectionIncomeAndPool(User.address, OnehundredToken)).toString()).to.be.eq(`${FiveToken.toString()},${NinetyFiveToken.toString()}`);
+
+      // Inject release reward
+      const InjectReleaseRewardHash = await Proxy.injectReleaseRewardHash(User.address, OnehundredToken, nonce);
+      const InjectReleaseRewardHashToBytes = web3.utils.hexToBytes(InjectReleaseRewardHash);
+      const Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(InjectReleaseRewardHashToBytes));
+      const Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(InjectReleaseRewardHashToBytes));
+      const sendHash = web3.utils.hexToBytes(await User.Proxy.HashToSign(InjectReleaseRewardHash));
+      await Administrator1.Proxy.AddOpHashToPending(sendHash, [Sig1, Sig2]);
+      await expect(Administrator1.Proxy.injectReleaseReward(User.address, OnehundredToken, nonce))
+        .to.emit(Proxy, 'InjectReleaseReward')
+        .withArgs(User.address, OnehundredToken)
+        .to.emit(Proxy, 'WithdrawReleasedReward')
+        .withArgs(User.address, FiveToken);
+
+      // Personal first inject time and pool
+      expect((await Proxy.releaseRewardInfo(User.address))[1]).to.be.eq(NinetyFiveToken);
+
+      // Modify network block timestamp, a month later
+      await network.provider.send('evm_increaseTime', [SecondsForMonth + 1]); // The next block will take effect.
+      await deployer.ERC20Token.approve(Proxy.address, OnehundredToken);
+      expect(await User.Proxy.checkReleased(User.address)).to.be.eq(NinetyPointFiveToken);
+
+      // Admin operation withdraw released reward
+      await expect(Administrator1.Proxy.withdrawReleasedRewardTo(User.address))
+        .to.emit(Proxy, 'WithdrawReleasedReward')
+        .withArgs(User.address, NinetyPointFiveToken);
+
+      // Future release data
+      expect((await User.Proxy.futureReleaseData(User.address)).length).to.be.eq(100);
     });
   });
 });
