@@ -24,4 +24,8 @@ contract Hello {
     function say() external view returns (string memory) {
         return HelloStorage.layout().content;
     }
+
+    function say2() external pure returns (string memory) {
+        return "Hello2";
+    }
 }
