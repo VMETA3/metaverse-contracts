@@ -203,12 +203,20 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
         returns (uint256 income, uint256 pool)
     {
         if (release_reward.inserted[receiver]) {
-            income = (release_reward.record[receiver].pool + amount) / 20;
-            pool = release_reward.record[receiver].pool + (amount - income);
+            amount = (release_reward.record[receiver].pool + amount);
+        }
+
+        income = amount / 20;
+        if (income < 5 * 10**17) {
+            income = 5 * 10**17;
+        }
+
+        if (amount - income < 0) {
+            return (pool, 0);
         } else {
-            income = amount / 20;
             pool = amount - income;
         }
+
         return (income, pool);
     }
 
@@ -218,6 +226,14 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
         uint256 nonce
     ) public onlyOperationPendding(HashToSign(injectReleaseRewardHash(receiver, amount, nonce))) {
         (uint256 income, uint256 pool) = injectionIncomeAndPool(receiver, amount);
+
+        if (pool < 5 * 10**17) {
+            income = pool;
+            pool = 0;
+        } else if (income < 5 * 10**17) {
+            income = 5 * 10**17;
+        }
+
         ERC20Token.transferFrom(spender, receiver, income);
         emit WithdrawReleasedReward(receiver, income);
 
@@ -333,14 +349,14 @@ contract ActivityReward is Initializable, UUPSUpgradeable, SafeOwnableUpgradeabl
                 continue;
             }
 
-            if (pool < 5 * 10**18) {
+            if (pool < 2 * 10**18) {
                 result[index] = FutureReleaseData(firstInjectTime, pool);
                 break;
             }
 
             uint256 income = pool / 10;
-            if (income < 5 * 10**18) {
-                income = 5 * 10**18;
+            if (income < 2 * 10**18) {
+                income = 2 * 10**18;
             }
             result[index] = FutureReleaseData(firstInjectTime, income);
 

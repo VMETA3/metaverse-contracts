@@ -134,18 +134,18 @@ describe('ActivityReward', () => {
       await Administrator1.Proxy.setSpender(deployer.address);
       const User = users[8];
       const nonce = 0;
-      const OnehundredToken = ethers.utils.parseEther('100');
-      const FiveToken = ethers.utils.parseEther('5');
+      const OneToken = ethers.utils.parseEther('1');
+      const ZeroPointFiveToken = ethers.utils.parseEther('0.5');
 
-      await deployer.ERC20Token.approve(Proxy.address, OnehundredToken);
+      await deployer.ERC20Token.approve(Proxy.address, OneToken);
 
-      const InjectReleaseRewardHash = await Proxy.injectReleaseRewardHash(User.address, OnehundredToken, nonce);
+      const InjectReleaseRewardHash = await Proxy.injectReleaseRewardHash(User.address, OneToken, nonce);
       const InjectReleaseRewardHashToBytes = web3.utils.hexToBytes(InjectReleaseRewardHash);
       const Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(InjectReleaseRewardHashToBytes));
       const Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(InjectReleaseRewardHashToBytes));
 
       // Verify unauthorized transactions
-      await expect(Administrator1.Proxy.injectReleaseReward(User.address, OnehundredToken, nonce)).to.revertedWith(
+      await expect(Administrator1.Proxy.injectReleaseReward(User.address, OneToken, nonce)).to.revertedWith(
         'SafeOwnableUpgradeable: operation not in pending'
       );
 
@@ -153,14 +153,14 @@ describe('ActivityReward', () => {
       await Administrator1.Proxy.AddOpHashToPending(sendHash, [Sig1, Sig2]);
 
       // injectReleaseReward
-      await expect(Administrator1.Proxy.injectReleaseReward(User.address, OnehundredToken, nonce))
+      await expect(Administrator1.Proxy.injectReleaseReward(User.address, OneToken, nonce))
         .to.emit(Proxy, 'InjectReleaseReward')
-        .withArgs(User.address, OnehundredToken)
+        .withArgs(User.address, OneToken)
         .to.emit(Proxy, 'WithdrawReleasedReward')
-        .withArgs(User.address, FiveToken);
+        .withArgs(User.address, ZeroPointFiveToken);
     });
 
-    it('Release 10%', async () => {
+    it('Next month, release 10%', async () => {
       const { deployer, Proxy, users, Administrator1, Administrator2, ERC20Token } = await setup();
       await Administrator1.Proxy.setERC20(ERC20Token.address);
       await Administrator1.Proxy.setSpender(deployer.address);
@@ -195,59 +195,59 @@ describe('ActivityReward', () => {
       expect(await User.Proxy.checkReleased(User.address)).to.be.eq(NinetyPointFiveToken);
     });
 
-    it('When the number of releases is less than 5, release 5', async () => {
+    it('When the number of releases is less than 2, release 2', async () => {
       const { deployer, Proxy, users, Administrator1, Administrator2, ERC20Token } = await setup();
       await Administrator1.Proxy.setERC20(ERC20Token.address);
       await Administrator1.Proxy.setSpender(deployer.address);
       const User = users[8];
       const nonce = 0;
-      const FortyFiveToken = ethers.utils.parseEther('45');
-      const FiveToken = ethers.utils.parseEther('5');
-      await deployer.ERC20Token.approve(Proxy.address, FortyFiveToken);
+      const FifteenToken = ethers.utils.parseEther('15');
+      const TwoToken = ethers.utils.parseEther('2');
+      await deployer.ERC20Token.approve(Proxy.address, FifteenToken);
 
       // User
-      const InjectReleaseRewardHash = await Proxy.injectReleaseRewardHash(User.address, FortyFiveToken, nonce);
+      const InjectReleaseRewardHash = await Proxy.injectReleaseRewardHash(User.address, FifteenToken, nonce);
       const InjectReleaseRewardHashToBytes = web3.utils.hexToBytes(InjectReleaseRewardHash);
       const Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(InjectReleaseRewardHashToBytes));
       const Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(InjectReleaseRewardHashToBytes));
       // InjectReleaseReward to User
       const sendHash = web3.utils.hexToBytes(await Proxy.HashToSign(InjectReleaseRewardHash));
       await Administrator1.Proxy.AddOpHashToPending(sendHash, [Sig1, Sig2]);
-      await expect(User.Proxy.injectReleaseReward(User.address, FortyFiveToken, nonce))
+      await expect(User.Proxy.injectReleaseReward(User.address, FifteenToken, nonce))
         .to.emit(Proxy, 'InjectReleaseReward')
-        .withArgs(User.address, FortyFiveToken);
+        .withArgs(User.address, FifteenToken);
 
       // next month
       await network.provider.send('evm_increaseTime', [SecondsForMonth + 1]);
-      await deployer.ERC20Token.approve(Proxy.address, FortyFiveToken);
-      expect(await User.Proxy.checkReleased(User.address)).to.be.eq(FiveToken);
+      await deployer.ERC20Token.approve(Proxy.address, FifteenToken);
+      expect(await User.Proxy.checkReleased(User.address)).to.be.eq(TwoToken);
     });
 
-    it('When the pool not enough 5, release all', async () => {
+    it('When the pool not enough 2, release all', async () => {
       const { deployer, Proxy, users, Administrator1, Administrator2, ERC20Token } = await setup();
       await Administrator1.Proxy.setERC20(ERC20Token.address);
       await Administrator1.Proxy.setSpender(deployer.address);
       const User = users[8];
       const nonce = 0;
-      const fourToken = ethers.utils.parseEther('4');
-      const threePointEightToken = ethers.utils.parseEther('3.8');
-      await deployer.ERC20Token.approve(Proxy.address, fourToken);
+      const OneToken = ethers.utils.parseEther('1');
+      const ZeroPointFiveToken = ethers.utils.parseEther('0.5');
+      await deployer.ERC20Token.approve(Proxy.address, OneToken);
 
       // User
-      const InjectReleaseRewardHash = await Proxy.injectReleaseRewardHash(User.address, fourToken, nonce);
+      const InjectReleaseRewardHash = await Proxy.injectReleaseRewardHash(User.address, OneToken, nonce);
       const InjectReleaseRewardHashToBytes = web3.utils.hexToBytes(InjectReleaseRewardHash);
       const Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(InjectReleaseRewardHashToBytes));
       const Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(InjectReleaseRewardHashToBytes));
       // injectReleaseReward to User
       const sendHash = web3.utils.hexToBytes(await Proxy.HashToSign(InjectReleaseRewardHash));
       await Administrator1.Proxy.AddOpHashToPending(sendHash, [Sig1, Sig2]);
-      await expect(User.Proxy.injectReleaseReward(User.address, fourToken, nonce))
+      await expect(User.Proxy.injectReleaseReward(User.address, OneToken, nonce))
         .to.emit(Proxy, 'InjectReleaseReward')
-        .withArgs(User.address, fourToken);
+        .withArgs(User.address, OneToken);
       // next month
       await network.provider.send('evm_increaseTime', [SecondsForMonth + 1]);
-      await deployer.ERC20Token.approve(Proxy.address, fourToken);
-      expect(await User.Proxy.checkReleased(User.address)).to.be.eq(threePointEightToken);
+      await deployer.ERC20Token.approve(Proxy.address, OneToken);
+      expect(await User.Proxy.checkReleased(User.address)).to.be.eq(ZeroPointFiveToken);
     });
 
     it('New features in version 2', async () => {
