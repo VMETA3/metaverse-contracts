@@ -9,14 +9,16 @@ import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ER
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../Abstract/SafeOwnableUpgradeable.sol";
+import "../Chainlink/ChainlinkClientUpgradeable.sol";
 
-contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnableUpgradeable {
+contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnableUpgradeable, ChainlinkClient {
     using SafeERC20Upgradeable for IERC20;
 
     event Build(address indexed user, uint256 tokenId);
     event Deposit(address indexed user, uint256 amount);
     event Withdraw(address indexed user, uint256 amount);
     event Refund(address indexed user, uint256 amount, bool Disposal);
+    event UpdateTokenUri(uint256 tokenId, string tokenUri);
 
     IERC20 public ERC20Token;
     bytes32 private DOMAIN;
@@ -27,6 +29,11 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
     uint256 private atDisposal;
     mapping(uint256 => string) private _tokenURIs;
     mapping(address => uint256) private _depositAmounts;
+
+    using Chainlink for Chainlink.Request;
+    bytes32 private jobId;
+    uint256 private fee;
+    mapping(bytes32 => uint256) private _requestIds; // requestId => tokenId
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
@@ -66,6 +73,12 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
                 address(this)
             )
         );
+
+        s_requestCount = 1;
+        setChainlinkToken(0x84b9B910527Ad5C03A9Ca831909E21e236EA7b06);
+        setChainlinkOracle(0xCC79157eb46F5624204f47AB42b3906cAA40eaB7);
+        jobId = "7d80a6386ef543a3abb52817f6707e3b";
+        fee = (1 * LINK_DIVISIBILITY) / 10; // 0,1 * 10**18 (Varies by network and job)
     }
 
     // This approach is needed to prevent unauthorized upgrades because in UUPS mode, the upgrade is done from the implementation contract, while in the transparent proxy model, the upgrade is done through the proxy contract
@@ -216,5 +229,27 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
 
     function balanceOfERC20(address account) public view returns (uint256) {
         return _depositAmounts[account];
+    }
+
+    function updateTokenUri(uint256 tokenId) public onlyOwner returns (bytes32 requestId) {
+        Chainlink.Request memory req = buildChainlinkRequest(jobId, address(this), this.fulfill.selector);
+        // string memory url = string.concat("http://localhost:10000/tokenUri?tokenId=", tokenId);
+        req.add("get", "https://test-api.vmeta3.com");
+        req.add("path", "token_uri");
+        requestId = sendChainlinkRequest(req, fee);
+        _requestIds[requestId] = tokenId;
+        return requestId;
+    }
+
+    function fulfill(bytes32 _requestId, string memory _tokenUri) public recordChainlinkFulfillment(_requestId) {
+        uint256 tokenId = _requestIds[_requestId];
+        require(_exists(tokenId), "Elf: Updated token id does not exist");
+        _tokenURIs[tokenId] = _tokenUri;
+        emit UpdateTokenUri(tokenId, _tokenUri);
+    }
+
+    function withdrawLink() public onlyOwner {
+        LinkTokenInterface link = LinkTokenInterface(chainlinkTokenAddress());
+        require(link.transfer(msg.sender, link.balanceOf(address(this))), "Elf: Unable to transfer");
     }
 }
