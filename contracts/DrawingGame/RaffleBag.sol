@@ -15,7 +15,7 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
 
     event RequestSent(uint256 requestId, uint32 numWords);
     event RequestFulfilled(uint256 requestId, uint256[] randomWords);
-    event Draw(address to, PrizeKind prizeKind, uint256 value);
+    event Draw(address to, PrizeKind prizeKind, uint256 value, uint256 requestId);
 
     address public spender;
     IERC20 public ERC20Token;
@@ -231,7 +231,7 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
             // Remove null prize
             if (prizePool[number].tokens.length == 0) _cleanPrizePool(number);
         }
-        emit Draw(to, prizePool[number].prizeKind, value);
+        emit Draw(to, prizePool[number].prizeKind, value, requestId);
     }
 
     function _randomNumber(address user, uint32 numWords) private returns (uint256 requestId) {
@@ -262,9 +262,7 @@ contract RaffleBag is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable, VR
     }
 
     function cleanPrizePoolAll() external onlyOwner {
-        for (uint256 i = 0; i < prizePool.length; ++i) {
-            prizePool.pop();
-        }
+        delete prizePool;
     }
 
     function _cleanPrizePool(uint256 number) private {

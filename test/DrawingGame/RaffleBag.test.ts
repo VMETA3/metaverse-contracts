@@ -268,6 +268,9 @@ describe('RaffleBag contract', () => {
       expect(PrizePool.length).to.be.eq(2);
       expect(PrizePool[0].prizeKind).to.be.eq(enumDCard);
       expect(PrizePool[1].prizeKind).to.be.eq(enumBCard);
+
+      await Administrator2.Proxy.cleanPrizePoolAll();
+      expect((await Proxy.getPrizePool()).length).to.be.eq(0);
     });
   });
 });
