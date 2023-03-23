@@ -90,5 +90,20 @@ describe('VM3 Token', () => {
       ).to.be.revertedWith('SafeOwnable: signer is not owner');
       expect(await VM3.balanceOf(to)).to.be.eq(0);
     });
+
+    it('check the issuance logic', async () => {
+      const {possessor, VM3, Administrator1, Administrator2} = await setup();
+      const nonce = await VM3.nonce();
+      const to = possessor.address;
+      const amount = ethers.BigNumber.from('80000000000000000000000000');
+      const toBlance = await VM3.balanceOf(to);
+      const mintHash = await VM3.getMintHash(to, amount, nonce);
+      const sig1 = await Administrator1.VM3.signer.signMessage(web3.utils.hexToBytes(mintHash));
+      const sig2 = await Administrator2.VM3.signer.signMessage(web3.utils.hexToBytes(mintHash));
+      await expect(VM3.mint(to, amount, [web3.utils.hexToBytes(sig1), web3.utils.hexToBytes(sig2)])).to.revertedWith(
+        'VMeta3: the total amount issued exceeded the TotalAmout'
+      );
+      expect(await VM3.balanceOf(to)).to.be.eq(toBlance);
+    });
   });
 });

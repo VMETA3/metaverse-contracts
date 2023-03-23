@@ -6,11 +6,11 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 contract VM3 is SafeOwnable, ERC20Burnable {
     using ECDSA for bytes32;
+    uint256 constant TotalAmout = 80000000000000000000000000;
 
     bytes32 public immutable DOMAIN;
 
     constructor(
-        uint256 chainId,
         uint256 initialSupply,
         address mintAddr,
         address[] memory owners,
@@ -21,7 +21,7 @@ contract VM3 is SafeOwnable, ERC20Burnable {
             abi.encode(
                 keccak256("Domain(string name,uint256 chainId,address verifyingContract)"),
                 keccak256(bytes(name())),
-                chainId,
+                block.chainid,
                 address(this)
             )
         );
@@ -35,6 +35,10 @@ contract VM3 is SafeOwnable, ERC20Burnable {
         return keccak256(abi.encodePacked(DOMAIN, keccak256("mint(address,uint256,uint256)"), to, amount, nonce_));
     }
 
+    function _hashToSign(bytes32 data) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", data));
+    }
+
     function mint(
         address to,
         uint256 amount,
@@ -43,7 +47,8 @@ contract VM3 is SafeOwnable, ERC20Burnable {
         _mint(to, amount);
     }
 
-    function _hashToSign(bytes32 data) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", data));
+    function _mint(address account, uint256 amount) internal virtual override {
+        require(amount + totalSupply() <= TotalAmout, "VMeta3: the total amount issued exceeded the TotalAmout");
+        super._mint(account, amount);
     }
 }
