@@ -78,7 +78,6 @@ describe('DrawingGame contract', function () {
     const lastTime = await time.latest();
     await Administrator1.Proxy.setEndTime(lastTime + 24 * 60 * 60 * 180);
     await Administrator1.Proxy.setStartTime(lastTime);
-    await network.provider.send('evm_setNextBlockTimestamp', [1677402600]); //FIXME
     await Administrator1.Proxy.requestRandomWordsForDraw(2);
     expect(await VRFCoordinatorV2.s_nextRequestId()).to.be.equal(2);
     const arr: number[] = [1, 1];

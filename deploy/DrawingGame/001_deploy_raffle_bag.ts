@@ -1,11 +1,11 @@
-import {HardhatRuntimeEnvironment} from 'hardhat/types';
-import {DeployFunction} from 'hardhat-deploy/types';
-import {setupUser} from '../../test/utils';
-import {RaffleBag} from '../../typechain';
-import {getChainlinkConfig} from '../../utils/chainlink';
+import { HardhatRuntimeEnvironment } from 'hardhat/types';
+import { DeployFunction } from 'hardhat-deploy/types';
+import { setupUser } from '../../test/utils';
+import { RaffleBag } from '../../typechain';
+import { getChainlinkConfig } from '../../utils/chainlink';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const {deployer} = await hre.getNamedAccounts();
+  const { deployer } = await hre.getNamedAccounts();
   const LogicName = 'RaffleBag';
 
   const RaffleBag = await hre.deployments.deploy(LogicName, {
@@ -30,9 +30,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 const deployProxy = async function (hre: HardhatRuntimeEnvironment, LogicName: string, ProxyName: string) {
-  const {log, getExtendedArtifact, save} = hre.deployments;
-  const {Administrator1, Administrator2, owner} = await hre.getNamedAccounts();
-  const Owners = [Administrator1, Administrator2, owner];
+  const { log, getExtendedArtifact, save } = hre.deployments;
+  const { Administrator1, Administrator2, owner, deployer } = await hre.getNamedAccounts();
+  const Owners = [Administrator1, Administrator2, owner, deployer];
   const SignRequired = 2;
 
   const Chainlink = getChainlinkConfig(hre.network.name);
@@ -60,7 +60,7 @@ const deployProxy = async function (hre: HardhatRuntimeEnvironment, LogicName: s
   await save(ProxyName, proxyDeployments);
 
   const P = <RaffleBag>Proxy;
-  const Admin = await setupUser(owner, {P});
+  const Admin = await setupUser(owner, { P });
 
   // Set up chainlink
   await Admin.P.setChainlink(
