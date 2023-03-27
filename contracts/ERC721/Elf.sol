@@ -11,7 +11,13 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../Abstract/SafeOwnableUpgradeable.sol";
 import "../Chainlink/ChainlinkClientUpgradeable.sol";
 
-contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnableUpgradeable, ChainlinkClient {
+contract VM3Elf is
+    Initializable,
+    ERC721Upgradeable,
+    UUPSUpgradeable,
+    SafeOwnableUpgradeable,
+    ChainlinkClientUpgradeable
+{
     using SafeERC20Upgradeable for IERC20;
 
     event Build(address indexed user, uint256 tokenId);
@@ -34,6 +40,8 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
     bytes32 private jobId;
     uint256 private fee;
     mapping(bytes32 => uint256) private _requestIds; // requestId => tokenId
+    string public requestApi;
+    string public requestPath;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
@@ -73,12 +81,6 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
                 address(this)
             )
         );
-
-        s_requestCount = 1;
-        setChainlinkToken(0x84b9B910527Ad5C03A9Ca831909E21e236EA7b06);
-        setChainlinkOracle(0xCC79157eb46F5624204f47AB42b3906cAA40eaB7);
-        jobId = "7d80a6386ef543a3abb52817f6707e3b";
-        fee = (1 * LINK_DIVISIBILITY) / 10; // 0,1 * 10**18 (Varies by network and job)
     }
 
     // This approach is needed to prevent unauthorized upgrades because in UUPS mode, the upgrade is done from the implementation contract, while in the transparent proxy model, the upgrade is done through the proxy contract
@@ -231,11 +233,48 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
         return _depositAmounts[account];
     }
 
-    function updateTokenUri(uint256 tokenId) public onlyOwner returns (bytes32 requestId) {
+    // Convert uint256 to string
+    function uint2str(uint256 _i) internal pure returns (string memory _uintAsString) {
+        if (_i == 0) {
+            return "0";
+        }
+        uint256 j = _i;
+        uint256 len;
+        while (j != 0) {
+            len++;
+            j /= 10;
+        }
+        bytes memory bstr = new bytes(len);
+        uint256 k = len - 1;
+        while (_i != 0) {
+            bstr[k--] = bytes1(uint8(48 + (_i % 10)));
+            _i /= 10;
+        }
+        return string(bstr);
+    }
+
+    // Concatenate strings and uint256
+    function concat(string memory a, uint256 b) internal pure returns (string memory) {
+        return string(abi.encodePacked(a, uint2str(b)));
+    }
+
+    function getUpdateTokenUriHash(uint256 tokenId, uint256 nonce_) public view returns (bytes32) {
+        return keccak256(abi.encodePacked(DOMAIN, keccak256("updateTokenUri(uint256,uint256)"), tokenId, nonce_));
+    }
+
+    function updateTokenUri(uint256 tokenId, uint256 nonce_) external returns (bytes32 requestId) {
+        return _updateTokenUri(tokenId, nonce_);
+    }
+
+    function _updateTokenUri(uint256 tokenId, uint256 nonce_)
+        private
+        onlyOperationPendding(HashToSign(getUpdateTokenUriHash(tokenId, nonce_)))
+        returns (bytes32 requestId)
+    {
+        require(ownerOf(tokenId) == _msgSender(), "Elf: Only token id owner can update token uri");
         Chainlink.Request memory req = buildChainlinkRequest(jobId, address(this), this.fulfill.selector);
-        // string memory url = string.concat("http://localhost:10000/tokenUri?tokenId=", tokenId);
-        req.add("get", "https://test-api.vmeta3.com");
-        req.add("path", "token_uri");
+        req.add("get", concat(requestApi, tokenId));
+        req.add("path", requestPath);
         requestId = sendChainlinkRequest(req, fee);
         _requestIds[requestId] = tokenId;
         return requestId;
@@ -251,5 +290,27 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
     function withdrawLink() public onlyOwner {
         LinkTokenInterface link = LinkTokenInterface(chainlinkTokenAddress());
         require(link.transfer(msg.sender, link.balanceOf(address(this))), "Elf: Unable to transfer");
+    }
+
+    function setRequestApi(string memory api) public onlyOwner {
+        requestApi = api;
+    }
+
+    function setRequestPath(string memory path) public onlyOwner {
+        requestPath = path;
+    }
+
+    function setChainlink(
+        uint256 requestCount,
+        address token,
+        address oracle,
+        bytes32 jobId_,
+        uint256 fee_
+    ) public onlyOwner {
+        s_requestCount = requestCount;
+        setChainlinkToken(token);
+        setChainlinkOracle(oracle);
+        jobId = jobId_;
+        fee = fee_;
     }
 }

@@ -24,8 +24,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 const deployProxy = async function (hre: HardhatRuntimeEnvironment, LogicName: string, ProxyName: string) {
   const {log, getExtendedArtifact, save} = hre.deployments;
-  const {Administrator1, Administrator2, owner} = await hre.getNamedAccounts();
-  const Owners = [Administrator1, Administrator2, owner];
+  const {Administrator1, Administrator2, owner, deployer} = await hre.getNamedAccounts();
+  const Owners = [Administrator1, Administrator2, owner, deployer];
   const SignRequired = 2;
 
   const Logic = await hre.ethers.getContractFactory(LogicName);

@@ -1,7 +1,7 @@
-import {expect} from '../chai-setup';
-import {ethers, upgrades, deployments, getUnnamedAccounts, getNamedAccounts} from 'hardhat';
-import {TestERC20, VM3Elf} from '../../typechain';
-import {setupUser, setupUsers} from '../utils';
+import { expect } from '../chai-setup';
+import { ethers, upgrades, deployments, getUnnamedAccounts, getNamedAccounts } from 'hardhat';
+import { TestERC20, VM3Elf, ChainlinkOracleMock, LinkToken } from '../../typechain';
+import { setupUser, setupUsers } from '../utils';
 import web3 from 'web3';
 
 const OnehundredToken = ethers.BigNumber.from('100000000000000000000');
@@ -10,7 +10,7 @@ const TenToken = OnehundredToken.div(10);
 const setup = deployments.createFixture(async () => {
   await deployments.fixture('VM3Elf');
   await deployments.fixture('TestERC20');
-  const {deployer, Administrator1, Administrator2} = await getNamedAccounts();
+  const { deployer, Administrator1, Administrator2 } = await getNamedAccounts();
 
   const Elf = await ethers.getContractFactory('VM3Elf');
 
@@ -25,10 +25,18 @@ const setup = deployments.createFixture(async () => {
   const VM3ElfProxy = await upgrades.deployProxy(Elf, [Name, Symbol, owners, signRequired]);
   await VM3ElfProxy.deployed();
 
+  // Set chainlink oracle
+  const LinkTokenFactory = await ethers.getContractFactory("LinkToken");
+  const LinkToken = await LinkTokenFactory.deploy();
+  const OracleMockFactory = await ethers.getContractFactory("ChainlinkOracleMock");
+  const OracleMock = await OracleMockFactory.deploy(LinkToken.address);
+
   const contracts = {
     ERC20Token: <TestERC20>await ethers.getContract('TestERC20'),
     Elf: <VM3Elf>await ethers.getContract('VM3Elf'),
     Proxy: <VM3Elf>VM3ElfProxy,
+    OracleMock: <ChainlinkOracleMock>OracleMock,
+    LinkToken: <LinkToken>LinkToken,
   };
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
 
@@ -50,13 +58,13 @@ const setup = deployments.createFixture(async () => {
 describe('VM3Elf Token', () => {
   describe('proxy information', async () => {
     it('The logical contract data is empty', async () => {
-      const {Elf} = await setup();
+      const { Elf } = await setup();
       expect(await Elf.name()).to.be.eq('');
       expect(await Elf.symbol()).to.be.eq('');
       expect(await Elf.symbol()).to.be.eq('');
     });
     it('The agent contract has the correct information', async () => {
-      const {Proxy, ERC20Token, Name, Symbol, Costs, Administrator1, Administrator2} = await setup();
+      const { Proxy, ERC20Token, Name, Symbol, Costs, Administrator1, Administrator2 } = await setup();
       Administrator1.Proxy.setERC20(ERC20Token.address);
       Administrator1.Proxy.setCosts(TenToken);
       expect(await Proxy.name()).to.be.eq(Name);
@@ -71,7 +79,7 @@ describe('VM3Elf Token', () => {
 
   describe('complete casting process', async () => {
     it('Deposit to self and build Elf', async () => {
-      const {ERC20Token, Proxy, OnehundredToken, TenToken, TokenURI, users, deployer, Administrator1, Administrator2} =
+      const { ERC20Token, Proxy, OnehundredToken, TenToken, TokenURI, users, deployer, Administrator1, Administrator2 } =
         await setup();
       Administrator1.Proxy.setERC20(ERC20Token.address);
       Administrator1.Proxy.setCosts(TenToken);
@@ -133,7 +141,7 @@ describe('VM3Elf Token', () => {
     });
 
     it('Deposit to someone and build Elf', async () => {
-      const {ERC20Token, Proxy, OnehundredToken, TenToken, TokenURI, users, deployer, Administrator1, Administrator2} =
+      const { ERC20Token, Proxy, OnehundredToken, TenToken, TokenURI, users, deployer, Administrator1, Administrator2 } =
         await setup();
       Administrator1.Proxy.setERC20(ERC20Token.address);
       Administrator1.Proxy.setCosts(TenToken);
@@ -246,7 +254,7 @@ describe('VM3Elf Token', () => {
 
   describe('deposit and withdraw', async () => {
     it('Verify users deposit balance', async () => {
-      const {ERC20Token, Proxy, OnehundredToken, TenToken, users, deployer, Administrator1} = await setup();
+      const { ERC20Token, Proxy, OnehundredToken, TenToken, users, deployer, Administrator1 } = await setup();
       Administrator1.Proxy.setERC20(ERC20Token.address);
       Administrator1.Proxy.setCosts(TenToken);
       const User = users[8];
@@ -270,7 +278,7 @@ describe('VM3Elf Token', () => {
       expect(await Proxy.balanceOfERC20(Someone.address)).to.be.eq(TenToken);
     });
     it('Verify users withdraw balance', async () => {
-      const {ERC20Token, Proxy, OnehundredToken, TenToken, users, deployer, Administrator1} = await setup();
+      const { ERC20Token, Proxy, OnehundredToken, TenToken, users, deployer, Administrator1 } = await setup();
       Administrator1.Proxy.setERC20(ERC20Token.address);
       Administrator1.Proxy.setCosts(TenToken);
       const User = users[7];
@@ -299,7 +307,7 @@ describe('VM3Elf Token', () => {
     });
 
     it('Verify admin refund balance', async () => {
-      const {ERC20Token, Proxy, OnehundredToken, TenToken, Administrator1, Administrator2, users, deployer} =
+      const { ERC20Token, Proxy, OnehundredToken, TenToken, Administrator1, Administrator2, users, deployer } =
         await setup();
       Administrator1.Proxy.setERC20(ERC20Token.address);
       Administrator1.Proxy.setCosts(TenToken);
@@ -326,6 +334,63 @@ describe('VM3Elf Token', () => {
         .withArgs(U1.address, TenToken, false);
       expect(await ERC20Token.balanceOf(U1.address)).to.be.eq(TenToken);
       expect(await Proxy.balanceOfERC20(U1.address)).to.be.eq(TenToken.mul(9));
+    });
+  });
+
+  describe('call api', async () => {
+    it('Update token uri', async () => {
+      const { Proxy, OnehundredToken, LinkToken, Administrator1, Administrator2, users, deployer, TokenURI, OracleMock } =
+        await setup();
+
+      // Initialize
+      await Administrator1.Proxy.setRequestApi('https://test.vmeta3.com?tokenId=');
+      await Administrator1.Proxy.setRequestPath('tokenId');
+
+
+      await Administrator1.Proxy.setChainlink('1',
+        LinkToken.address,
+        OracleMock.address,
+        ethers.utils.toUtf8Bytes('7d80a6386ef543a3abb52817f6707e3b'),
+        ethers.utils.parseEther('0.1')
+      );
+      await LinkToken.transfer(Proxy.address, OnehundredToken);
+      await LinkToken.transfer(Proxy.address, OnehundredToken);
+
+
+
+      // Build a nft
+      const User = users[7];
+      let Nonce = 0;
+      let TokenId = 0;
+
+      const BuildHash = web3.utils.hexToBytes(await Proxy.getBuildHash(User.address, TokenURI, Nonce));
+      let Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(BuildHash));
+      let Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(BuildHash));
+      let Sign = [Sig1, Sig2];
+      await Administrator1.Proxy.AddOpHashToPending(
+        web3.utils.hexToBytes(await Proxy.HashToSign(await Proxy.getBuildHash(User.address, TokenURI, Nonce))),
+        Sign
+      );
+      await expect(User.Proxy.build(TokenURI, Nonce)).to.emit(Proxy, 'Build').withArgs(User.address, TokenId);
+
+      // Update the token URI
+      const NewTokenURI = '{"name":"updated elf"}';
+      Nonce = 1;
+      const UpdateHash = web3.utils.hexToBytes(await Proxy.getUpdateTokenUriHash(TokenId, Nonce));
+      Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(UpdateHash));
+      Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(UpdateHash));
+      Sign = [Sig1, Sig2];
+      await Administrator1.Proxy.AddOpHashToPending(
+        web3.utils.hexToBytes(await Proxy.HashToSign(await Proxy.getUpdateTokenUriHash(TokenId, Nonce))),
+        Sign
+      );
+
+      const transaction = await User.Proxy.updateTokenUri(TokenId, Nonce);
+      const transactionReceipt = await transaction.wait(1);
+      const requestId = transactionReceipt.events![0].topics[1];
+
+      await deployer.OracleMock.fulfillOracleRequest(requestId, NewTokenURI);
+      expect(await Proxy.tokenURI(TokenId)).to.be.eq(NewTokenURI);
     });
   });
 });
