@@ -338,15 +338,13 @@ describe('VM3Elf Token', () => {
   });
 
   describe('call api', async () => {
-    it('Update token uri', async () => {
+    it('Update token uri success', async () => {
       const { Proxy, OnehundredToken, LinkToken, Administrator1, Administrator2, users, deployer, TokenURI, OracleMock } =
         await setup();
 
       // Initialize
       await Administrator1.Proxy.setRequestApi('https://test.vmeta3.com?tokenId=');
       await Administrator1.Proxy.setRequestPath('tokenId');
-
-
       await Administrator1.Proxy.setChainlink('1',
         LinkToken.address,
         OracleMock.address,
@@ -354,9 +352,6 @@ describe('VM3Elf Token', () => {
         ethers.utils.parseEther('0.1')
       );
       await LinkToken.transfer(Proxy.address, OnehundredToken);
-      await LinkToken.transfer(Proxy.address, OnehundredToken);
-
-
 
       // Build a nft
       const User = users[7];
@@ -391,6 +386,54 @@ describe('VM3Elf Token', () => {
 
       await deployer.OracleMock.fulfillOracleRequest(requestId, NewTokenURI);
       expect(await Proxy.tokenURI(TokenId)).to.be.eq(NewTokenURI);
+    });
+
+    it('Non-owner update failed', async () => {
+      const { Proxy, OnehundredToken, LinkToken, Administrator1, Administrator2, users, deployer, TokenURI, OracleMock } =
+        await setup();
+
+      // Initialize
+      await Administrator1.Proxy.setRequestApi('https://test.vmeta3.com?tokenId=');
+      await Administrator1.Proxy.setRequestPath('tokenId');
+      await Administrator1.Proxy.setChainlink('1',
+        LinkToken.address,
+        OracleMock.address,
+        ethers.utils.toUtf8Bytes('7d80a6386ef543a3abb52817f6707e3b'),
+        ethers.utils.parseEther('0.1')
+      );
+      await LinkToken.transfer(Proxy.address, OnehundredToken);
+
+      // Build a nft
+      const User = users[7];
+      const User2 = users[8];
+      let Nonce = 0;
+      let TokenId = 0;
+
+      const BuildHash = web3.utils.hexToBytes(await Proxy.getBuildHash(User.address, TokenURI, Nonce));
+      let Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(BuildHash));
+      let Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(BuildHash));
+      let Sign = [Sig1, Sig2];
+      await Administrator1.Proxy.AddOpHashToPending(
+        web3.utils.hexToBytes(await Proxy.HashToSign(await Proxy.getBuildHash(User.address, TokenURI, Nonce))),
+        Sign
+      );
+      await expect(User.Proxy.build(TokenURI, Nonce)).to.emit(Proxy, 'Build').withArgs(User.address, TokenId);
+
+      // Update the token URI
+      const NewTokenURI = '{"name":"updated elf"}';
+      Nonce = 1;
+      const UpdateHash = web3.utils.hexToBytes(await Proxy.getUpdateTokenUriHash(TokenId, Nonce));
+      Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(UpdateHash));
+      Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(UpdateHash));
+      Sign = [Sig1, Sig2];
+      await Administrator1.Proxy.AddOpHashToPending(
+        web3.utils.hexToBytes(await Proxy.HashToSign(await Proxy.getUpdateTokenUriHash(TokenId, Nonce))),
+        Sign
+      );
+
+      await expect(User2.Proxy.updateTokenUri(TokenId, Nonce)).to.revertedWith(
+        'Elf: Only token id owner can update token uri'
+      );
     });
   });
 });

@@ -27,6 +27,7 @@ const deployProxy = async function (hre: HardhatRuntimeEnvironment, LogicName: s
 
     const Chainlink = getChainlinkConfig(hre.network.name);
     if (
+        Chainlink.requestCount === '' ||
         Chainlink.linkToken === '' ||
         Chainlink.oracle === '' ||
         Chainlink.jobId === '' ||
@@ -65,4 +66,4 @@ const deployProxy = async function (hre: HardhatRuntimeEnvironment, LogicName: s
 };
 
 export default func;
-func.tags = ['UpgradeRaffleBag'];
+func.tags = ['UpgradeVM3Elf'];
