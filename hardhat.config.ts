@@ -30,11 +30,11 @@ const config: HardhatUserConfig = {
     },
     Administrator1: {
       default: 2,
-      bsc_test: '0xfeaD27a71FDA8458d8b9f9055B50800eCbCaA10e',
+      bsc_test: '0x5aCEDaad555f2D720979eeB4f04B78F024b3b0F9',
     },
     Administrator2: {
       default: 3,
-      bsc_test: '0x2Fe8D2Bc3FD37cD7AcbbE668A7a12F957e79D708',
+      bsc_test: '0xbf0128f0BA889B0Eb03cF31fD8cdEe553E91D56c',
     },
     interestAccount: {
       default: 5,
