@@ -27,7 +27,6 @@ const deployProxy = async function (hre: HardhatRuntimeEnvironment, LogicName: s
 
     const Chainlink = getChainlinkConfig(hre.network.name);
     if (
-        Chainlink.requestCount === '' ||
         Chainlink.linkToken === '' ||
         Chainlink.oracle === '' ||
         Chainlink.jobId === '' ||
@@ -56,7 +55,6 @@ const deployProxy = async function (hre: HardhatRuntimeEnvironment, LogicName: s
     
     // Set up chainlink
     await Admin.VM3Elf.setChainlink(
-        hre.ethers.BigNumber.from(Chainlink.requestCount),
         hre.ethers.utils.getAddress(Chainlink.linkToken),
         hre.ethers.utils.getAddress(Chainlink.oracle),
         Chainlink.jobId,

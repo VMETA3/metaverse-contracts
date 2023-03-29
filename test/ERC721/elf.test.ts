@@ -345,7 +345,7 @@ describe('VM3Elf Token', () => {
       // Initialize
       await Administrator1.Proxy.setRequestApi('https://test.vmeta3.com?tokenId=');
       await Administrator1.Proxy.setRequestPath('tokenId');
-      await Administrator1.Proxy.setChainlink('1',
+      await Administrator1.Proxy.setChainlink(
         LinkToken.address,
         OracleMock.address,
         ethers.utils.toUtf8Bytes('7d80a6386ef543a3abb52817f6707e3b'),
@@ -395,7 +395,7 @@ describe('VM3Elf Token', () => {
       // Initialize
       await Administrator1.Proxy.setRequestApi('https://test.vmeta3.com?tokenId=');
       await Administrator1.Proxy.setRequestPath('tokenId');
-      await Administrator1.Proxy.setChainlink('1',
+      await Administrator1.Proxy.setChainlink(
         LinkToken.address,
         OracleMock.address,
         ethers.utils.toUtf8Bytes('7d80a6386ef543a3abb52817f6707e3b'),

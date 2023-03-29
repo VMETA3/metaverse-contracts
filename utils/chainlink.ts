@@ -7,7 +7,6 @@ export interface ChainlinkConfig {
   subscribeId: string;
   keyHash: string;
   requestConfirmations: string;
-  requestCount: string;
   linkToken: string;
   oracle: string;
   jobId: string;
@@ -23,21 +22,19 @@ export function getChainlinkConfig(networkName: string): ChainlinkConfig {
       subscribeId: '1',
       keyHash: ethers.constants.HashZero,
       requestConfirmations: '3',
-      requestCount: '1',
       linkToken: '0x84b9B910527Ad5C03A9Ca831909E21e236EA7b06',
       oracle: '0xCC79157eb46F5624204f47AB42b3906cAA40eaB7',
       jobId: ethers.constants.HashZero,
       fee: '0.1',
     };
   }
-  let contract, gasLimit, subscribeId, keyHash, requestConfirmations, requestCount,linkToken, oracle, jobId, fee;
+  let contract, gasLimit, subscribeId, keyHash, requestConfirmations, linkToken, oracle, jobId, fee;
   if (networkName) {
     contract = process.env['CHAINLINK_CONTRACT_' + networkName.toUpperCase()];
     gasLimit = process.env['CHAINLINK_GAS_LIMIT_' + networkName.toUpperCase()];
     subscribeId = process.env['CHAINLINK_SUBSCRIBE_ID_' + networkName.toUpperCase()];
     keyHash = process.env['CHAINLINK_KEY_HASH_' + networkName.toUpperCase()];
     requestConfirmations = process.env['CHAINLINK_REQUEST_CONFIRMATIONS_' + networkName.toUpperCase()];
-    requestCount = process.env['CHAINLINK_REQUEST_COUNT_' + networkName.toUpperCase()];
     linkToken = process.env['CHAINLINK_LINK_TOKEN_' + networkName.toUpperCase()];
     oracle = process.env['CHAINLINK_ORACLE_' + networkName.toUpperCase()];
     jobId = process.env['CHAINLINK_JOB_ID_' + networkName.toUpperCase()];
@@ -48,7 +45,6 @@ export function getChainlinkConfig(networkName: string): ChainlinkConfig {
     subscribeId = process.env['CHAINLINK_SUBSCRIBE_ID'];
     keyHash = process.env['CHAINLINK_KEY_HASH'];
     requestConfirmations = process.env['CHAINLINK_REQUEST_CONFIRMATIONS'];
-    requestCount = process.env['CHAINLINK_REQUEST_COUNT'];
     linkToken = process.env['CHAINLINK_LINK_TOKEN'];
     oracle = process.env['CHAINLINK_ORACLE'];
     jobId = process.env['CHAINLINK_JOB_ID'];
@@ -69,9 +65,6 @@ export function getChainlinkConfig(networkName: string): ChainlinkConfig {
   if (requestConfirmations === undefined) {
     requestConfirmations = '';
   }
-  if (requestCount === undefined) {
-    requestCount = '';
-  }
   if (linkToken === undefined) {
     linkToken = '';
   }
@@ -90,7 +83,6 @@ export function getChainlinkConfig(networkName: string): ChainlinkConfig {
     subscribeId: subscribeId,
     keyHash: keyHash,
     requestConfirmations: requestConfirmations,
-    requestCount: requestCount,
     linkToken: linkToken,
     oracle: oracle,
     jobId: jobId,

@@ -301,13 +301,11 @@ contract VM3Elf is
     }
 
     function setChainlink(
-        uint256 requestCount,
         address token,
         address oracle,
         bytes32 jobId_,
         uint256 fee_
     ) public onlyOwner {
-        s_requestCount = requestCount;
         setChainlinkToken(token);
         setChainlinkOracle(oracle);
         jobId = jobId_;

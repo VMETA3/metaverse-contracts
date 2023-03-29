@@ -8,13 +8,14 @@ import "@chainlink/contracts/src/v0.8/interfaces/ChainlinkRequestInterface.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/OperatorInterface.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/PointerInterface.sol";
 import {ENSResolver as ENSResolver_Chainlink} from "@chainlink/contracts/src/v0.8/vendor/ENSResolver.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
  * @title The ChainlinkClient contract
  * @notice Contract writers can inherit this contract in order to create requests for the
  * Chainlink network
  */
-abstract contract ChainlinkClientUpgradeable {
+abstract contract ChainlinkClientUpgradeable is Initializable {
   using Chainlink for Chainlink.Request;
 
   uint256 internal constant LINK_DIVISIBILITY = 10**18;
@@ -30,7 +31,7 @@ abstract contract ChainlinkClientUpgradeable {
   bytes32 private s_ensNode;
   LinkTokenInterface private s_link;
   OperatorInterface private s_oracle;
-  uint256 public s_requestCount;
+  uint256 private s_requestCount;
   mapping(bytes32 => address) private s_pendingRequests;
 
   event ChainlinkRequested(bytes32 indexed id);
