@@ -37,11 +37,11 @@ export function getChainlinkConfig(networkName: string): ChainlinkConfig {
     subscribeId = process.env['CHAINLINK_SUBSCRIBE_ID_' + networkName.toUpperCase()];
     keyHash = process.env['CHAINLINK_KEY_HASH_' + networkName.toUpperCase()];
     requestConfirmations = process.env['CHAINLINK_REQUEST_CONFIRMATIONS_' + networkName.toUpperCase()];
-    requestCount = process.env['CHAINLINK_REQUEST_COUNT' + networkName.toUpperCase()];
-    linkToken = process.env['CHAINLINK_LINK_TOKEN' + networkName.toUpperCase()];
-    oracle = process.env['CHAINLINK_ORACLE' + networkName.toUpperCase()];
-    jobId = process.env['CHAINLINK_JOB_ID' + networkName.toUpperCase()];
-    fee = process.env['CHAINLINK_FEE' + networkName.toUpperCase()];
+    requestCount = process.env['CHAINLINK_REQUEST_COUNT_' + networkName.toUpperCase()];
+    linkToken = process.env['CHAINLINK_LINK_TOKEN_' + networkName.toUpperCase()];
+    oracle = process.env['CHAINLINK_ORACLE_' + networkName.toUpperCase()];
+    jobId = process.env['CHAINLINK_JOB_ID_' + networkName.toUpperCase()];
+    fee = process.env['CHAINLINK_FEE_' + networkName.toUpperCase()];
   } else {
     contract = process.env['CHAINLINK_CONTRACT'];
     gasLimit = process.env['CHAINLINK_GAS_LIMIT'];
