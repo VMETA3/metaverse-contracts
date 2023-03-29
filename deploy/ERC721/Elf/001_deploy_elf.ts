@@ -7,7 +7,7 @@ const Symbol = 'VM3Elf';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deploy, log} = hre.deployments;
   const {deployer} = await hre.getNamedAccounts();
-  const LogicName = 'VM3Elf';
+  const LogicName = 'VM3ElfV1';
   const ProxyName = 'Proxy_VM3Elf';
 
   const Elf = await deploy(LogicName, {
