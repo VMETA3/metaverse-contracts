@@ -394,7 +394,8 @@ describe('VM3Elf Token', () => {
 
       // Initialize
       await Administrator1.Proxy.setRequestApi('https://test.vmeta3.com?tokenId=');
-      await Administrator1.Proxy.setRequestPath('tokenId');
+      // Example response: {'tokenUri': '{"name":"updated elf"}'}
+      await Administrator1.Proxy.setRequestPath('tokenUri');
       await Administrator1.Proxy.setChainlink(
         LinkToken.address,
         OracleMock.address,
