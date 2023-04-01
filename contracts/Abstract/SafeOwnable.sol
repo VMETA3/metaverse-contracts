@@ -71,7 +71,7 @@ abstract contract SafeOwnable is Context {
         _;
     }
 
-    modifier onlyOperationPendding(bytes32 opHash) {
+    modifier onlyOperationPending(bytes32 opHash) {
         require(operationsStatus[opHash] == OpStatus.OpPending, "SafeOwnable: operation not in pending");
         operationsStatus[opHash] = OpStatus.OpExecuted;
         _;

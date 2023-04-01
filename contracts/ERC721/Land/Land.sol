@@ -143,7 +143,7 @@ contract Land is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnableU
         uint256 active,
         address account,
         uint256 nonce
-    ) private onlyOperationPendding(_hashToSign(getInjectActiveHash(tokenId, active, account, nonce))) {
+    ) private onlyOperationPending(_hashToSign(getInjectActiveHash(tokenId, active, account, nonce))) {
         require(
             _active_value[tokenId].total + active <= _active_value[tokenId].conditions,
             "Land: too many active values"

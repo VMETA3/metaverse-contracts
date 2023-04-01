@@ -6,7 +6,7 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 contract VM3 is SafeOwnable, ERC20Burnable {
     using ECDSA for bytes32;
-    uint256 constant TotalAmout = 80000000000000000000000000;
+    uint256 constant TotalAmount = 80000000000000000000000000;
 
     bytes32 public immutable DOMAIN;
 
@@ -48,7 +48,7 @@ contract VM3 is SafeOwnable, ERC20Burnable {
     }
 
     function _mint(address account, uint256 amount) internal virtual override {
-        require(amount + totalSupply() <= TotalAmout, "VMeta3: the total amount issued exceeded the TotalAmout");
+        require(amount + totalSupply() <= TotalAmount, "VMeta3: the total amount issued exceeded the TotalAmout");
         super._mint(account, amount);
     }
 }

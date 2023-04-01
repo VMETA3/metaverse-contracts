@@ -76,7 +76,7 @@ abstract contract SafeOwnableUpgradeable is Initializable, ContextUpgradeable {
         _;
     }
 
-    modifier onlyOperationPendding(bytes32 opHash) {
+    modifier onlyOperationPending(bytes32 opHash) {
         require(operationsStatus[opHash] == OpStatus.OpPending, "SafeOwnableUpgradeable: operation not in pending");
         operationsStatus[opHash] = OpStatus.OpExecuted;
         _;
