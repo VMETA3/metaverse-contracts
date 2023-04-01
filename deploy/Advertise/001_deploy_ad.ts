@@ -13,9 +13,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const Prize = await deployments.get('Prize');
   log(`contract Prize deployed at ${Prize.address} using`);
 
-  await deploy('Advertise', {
+  const Advertise = await deploy('Advertise', {
     from: deployer,
-    args: ['Test AD', 'TAD', 1000],
+    args: ['VMeta3 Advertise', 'VAD', 1000],
     // gasPrice: "80000000000",  // 1000000000 = 1 gwei
     // gasLimit: "30000000",
     log: true,
@@ -25,6 +25,19 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       Prize: Prize.address,
     },
   });
+  if (Advertise.newlyDeployed) {
+    log(`contract Advertise deployed at ${Advertise.address} using`);
+  }
+
+  const Settlement = await deploy('Settlement', {
+    from: deployer,
+    args: [Advertise.address],
+    log: true,
+    autoMine: true, // speed up deployment on local network (ganache, hardhat), no effect on live networks
+  });
+  if (Settlement.newlyDeployed) {
+    log(`contract Settlement deployed at ${Settlement.address} using`);
+  }
 };
 export default func;
 func.tags = ['AD'];

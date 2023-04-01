@@ -35,7 +35,7 @@ contract Settlement is ISettlement, Ownable {
     }
 
     modifier isToken(address token) {
-        require((token == AD.getUniversalToken() || token == AD.getSurpriseToken()), "isToken: invalid token");
+        require((token == AD.getUniversalToken() || token == AD.getSurpriseToken()), "Settlement: invalid token");
         _;
     }
 
@@ -53,19 +53,19 @@ contract Settlement is ISettlement, Ownable {
         if (surprise_token == token) {
             total += AD.getSurpriseAmount();
         }
-        require(total == num, "isEnough: Not enough tokens");
+        require(total == num, "Settlement: Not enough tokens");
         _;
     }
 
     modifier isEnded() {
-        require(AD.getEndTime() < AD.getCurrentTime(), "Is not ended");
-        require(AD.getSurpriseStatus(), "The lucky man is not revealed");
+        require(AD.getEndTime() < AD.getCurrentTime(), "Settlement: is not ended");
+        require(AD.getSurpriseStatus(), "Settlement: the lucky man is not revealed");
         _;
     }
 
     bool internal locked;
     modifier noReentrant() {
-        require(!locked, "No re-entrancy");
+        require(!locked, "Settlement: No re-entrancy");
         locked = true;
         _;
         locked = false;
@@ -73,7 +73,7 @@ contract Settlement is ISettlement, Ownable {
 
     modifier isLucky(uint256 ticket_id) {
         uint256 LuckyMan = AD.getSurpriseLuckyId();
-        require(ticket_id == LuckyMan, "This Ticket did not win the grand prize");
+        require(ticket_id == LuckyMan, "Settlement: this ticket did not win the grand prize");
         _;
     }
 
@@ -100,10 +100,8 @@ contract Settlement is ISettlement, Ownable {
     }
 
     function _getPrize(uint256 ticket_id, address token) private view returns (address _to, uint256 amount) {
-        _to = payable(_to = AD.ownerOf(ticket_id));
-        uint256 LuckyMan = AD.getSurpriseLuckyId();
-        bool is_lucky = (ticket_id == LuckyMan);
-        amount = _getAmount(is_lucky, token);
+        _to = AD.ownerOf(ticket_id);
+        amount = _getAmount(ticket_id, token);
     }
 
     function _getPrizeNFT(uint256 ticket_id)
@@ -121,78 +119,39 @@ contract Settlement is ISettlement, Ownable {
     }
 
     function _getUniversalAmount(address token) private view returns (uint256) {
-        address u_token = AD.getUniversalToken();
-        if (u_token != token) {
-            return 0;
-        }
+        if (AD.getUniversalToken() != token) return 0;
         return AD.getUniversalAmount();
     }
 
     function _getSurpriseAmount(address token) private view returns (uint256 total) {
-        address u_token = AD.getSurpriseToken();
-        if (u_token != token) {
-            return 0;
-        }
+        if (AD.getSurpriseToken() != token) return 0;
         total += AD.getSurpriseAmount();
         total += _getUniversalAmount(token);
         return total;
     }
 
-    function _getAmount(bool is_lucky, address token) private view returns (uint256 amount) {
-        if (is_lucky) {
-            amount = _getSurpriseAmount(token);
+    function _getAmount(uint256 ticket_id, address token) private view returns (uint256 amount) {
+        amount = 0;
+        if (ticket_id == AD.getSurpriseLuckyId()) {
+            if (_prize_claim_status[ticket_id].SurpriseToken == false) amount = _getSurpriseAmount(token);
         } else {
-            amount = _getUniversalAmount(token);
+            if (_prize_claim_status[ticket_id].Universal == false) amount = _getUniversalAmount(token);
         }
     }
 
-    receive() external payable {
-        _VM3Deposit(msg.sender, 200_000, bytes(""));
-    }
-
-    function depositVM3(bytes calldata data_)
-        external
-        payable
-        override
-        isToken(address(0))
-        isEnough(address(0), msg.value)
-    {
-        _VM3Deposit(msg.sender, msg.value, data_);
-    }
-
-    function depositERC20(address token, uint256 amount) external override isToken(token) isEnough(token, amount) {
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-        emit ERC20Deposit(msg.sender, token, amount);
-    }
-
-    function _VM3Deposit(
-        address from,
-        uint256 amount,
-        bytes memory data_
-    ) internal {
-        emit VM3Deposit(from, amount, data_);
-    }
-
-    function settlementVM3(uint256 ticket_id) public payable noReentrant isEnded isToken(address(0)) {
-        (address _to, uint256 amount) = _getPrize(ticket_id, address(0));
-        if (amount > 0) {
-            bool sent = payable(_to).send(amount);
-            require(sent, "Failed to send");
-            _recordPrizeAmount(ticket_id, (ticket_id == AD.getSurpriseLuckyId()));
-        }
-    }
-
-    function settlementERC20(address token, uint256 ticket_id) public noReentrant isEnded isToken(token) {
+    function settlementERC20(address token, uint256 ticket_id) external override noReentrant isEnded isToken(token) {
         (address _to, uint256 amount) = _getPrize(ticket_id, token);
-        if (amount > 0) {
-            IERC20(token).safeTransfer(_to, amount);
-            _recordPrizeAmount(ticket_id, (ticket_id == AD.getSurpriseLuckyId()));
-        }
+        require(amount > 0, "Settlement: there are no assets to settle");
+        IERC20(token).safeTransfer(_to, amount);
+        _recordPrizeAmount(ticket_id, (ticket_id == AD.getSurpriseLuckyId()));
+        emit Settlement(_to, token, amount);
     }
 
-    function settlementERC721(uint256 ticket_id) public noReentrant isEnded isLucky(ticket_id) {
+    function settlementERC721(uint256 ticket_id) external override noReentrant isEnded isLucky(ticket_id) {
+        require(_prize_claim_status[ticket_id].SurpriseNFT == false, "Settlement: there are no assets to settle");
         (address _to, address token, uint256 nft_id) = _getPrizeNFT(ticket_id);
         IERC721(token).safeTransferFrom(address(this), _to, nft_id);
         _recordPrizeNFT(ticket_id);
+        emit Settlement(_to, token, nft_id);
     }
 }

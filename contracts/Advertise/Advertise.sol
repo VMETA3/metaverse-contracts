@@ -43,8 +43,7 @@ contract Advertise is IAdvertise, ERC721Ticket {
     }
 
     modifier revealRewards() {
-        uint256 time = _timestamp._getCurrentTime();
-        require((time > end_time), "revealRewards: It's not time to reveal the rewards");
+        require((_timestamp._getCurrentTime() > end_time), "revealRewards: It's not time to reveal the rewards");
         _;
     }
 
