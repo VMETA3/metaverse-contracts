@@ -213,9 +213,7 @@ contract Vip is Initializable, UUPSUpgradeable, SafeOwnableUpgradeable {
     }
 
     function cleanLevelArrayAll() external onlyOwner {
-        for (uint256 i = 0; i < levelArray.length; ++i) {
-            levelArray.pop();
-        }
+        delete levelArray;
     }
 
     function _cleanLevelArray(uint256 number) private {
