@@ -28,7 +28,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 const deployProxy = async function (hre: HardhatRuntimeEnvironment, LogicName: string, ProxyName: string) {
   const { log, getExtendedArtifact, save } = hre.deployments;
-  console.log(`Upgrading ${LogicName}...`);
+  log(`Upgrading ${LogicName}...`);
   const Proxy = await hre.deployments.get(ProxyName);
   const Logic = await hre.ethers.getContractFactory(LogicName);
 
@@ -40,7 +40,7 @@ const deployProxy = async function (hre: HardhatRuntimeEnvironment, LogicName: s
     ...artifact,
   };
   await save(ProxyName, proxyDeployments);
-  console.log("Upgrade succeeded");
+  log("Upgrade succeeded");
 };
 
 export default func;
