@@ -6,17 +6,12 @@ pragma solidity ^0.8.9;
 import {IAdvertise} from "./IAdvertise.sol";
 
 /* Library Imports */
-import {Time} from "../Lib/Time.sol";
 import {Prize} from "../Lib/Prize.sol";
 
 /* Contract Imports */
 import {ERC721Ticket} from "./ERC721Ticket.sol";
 
 contract Advertise is IAdvertise, ERC721Ticket {
-    // Control timestamp
-    using Time for Time.Timestamp;
-    Time.Timestamp private _timestamp;
-
     // Prizes for current ad
     using Prize for Prize.Universal;
     Prize.Universal private Universal;
@@ -37,13 +32,12 @@ contract Advertise is IAdvertise, ERC721Ticket {
     ) ERC721Ticket(name, symbol, total) {}
 
     modifier isActive() {
-        uint256 time = _timestamp._getCurrentTime();
-        require((time >= starting_time && time <= end_time), "isActive: Not at the specified time");
+        require((block.timestamp >= starting_time && block.timestamp <= end_time), "isActive: Not at the specified time");
         _;
     }
 
     modifier revealRewards() {
-        require((_timestamp._getCurrentTime() > end_time), "revealRewards: It's not time to reveal the rewards");
+        require((block.timestamp > end_time), "revealRewards: It's not time to reveal the rewards");
         _;
     }
 
@@ -54,11 +48,6 @@ contract Advertise is IAdvertise, ERC721Ticket {
 
     function setSettlement(address addr_) external onlyOwner {
         settlement = addr_;
-    }
-
-    function setTestTime(uint256 timestamp_) external override onlyOwner {
-        _timestamp._setCurrentTime(timestamp_);
-        emit SetTestTime(timestamp_);
     }
 
     function setAdTime(uint256 start_, uint256 end_) external override onlyOwner {
@@ -105,10 +94,6 @@ contract Advertise is IAdvertise, ERC721Ticket {
             require(balance < cap_per_person, "Transfer:The account holding has reached the upper limit");
         }
         super._transfer(from, to, ticket_id);
-    }
-
-    function getCurrentTime() public view returns (uint256) {
-        return _timestamp._getCurrentTime();
     }
 
     function getEndTime() public view returns (uint256) {

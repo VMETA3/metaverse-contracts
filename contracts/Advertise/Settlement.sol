@@ -58,7 +58,7 @@ contract Settlement is ISettlement, Ownable {
     }
 
     modifier isEnded() {
-        require(AD.getEndTime() < AD.getCurrentTime(), "Settlement: is not ended");
+        require(AD.getEndTime() < block.timestamp, "Settlement: is not ended");
         require(AD.getSurpriseStatus(), "Settlement: the lucky man is not revealed");
         _;
     }

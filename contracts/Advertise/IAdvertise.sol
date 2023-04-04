@@ -21,8 +21,6 @@ interface IAdvertise {
     /********************
      * Public Functions *
      ********************/
-    function setTestTime(uint256 timestamp_) external;
-
     function setAdTime(uint256 start_, uint256 end_) external;
 
     function setCapPerPerson(uint256 cap_per_person_) external;
