@@ -27,7 +27,8 @@ abstract contract SafeOwnable is Context {
     event OperationAdded(bytes32 indexed opHash);
 
     constructor(address[] memory ownerList, uint8 signRequired_) {
-        require(ownerList.length <= maxNumOwners, "SafeOwnable:exceed maximum number owners");
+        require(ownerList.length > 0, "SafeOwnable: ownerList must be greater than 0");
+        require(ownerList.length <= maxNumOwners, "SafeOwnable: exceed maximum number owners");
         require(signRequired_ != 0, "SafeOwnable: signRequired is zero");
 
         signRequired = signRequired_;

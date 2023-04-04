@@ -32,7 +32,8 @@ abstract contract SafeOwnableUpgradeable is Initializable, ContextUpgradeable {
      * @dev Initializes the contract setting the deployer as the initial owner.
      */
     function __Ownable_init(address[] memory ownerList, uint8 signRequired_) internal onlyInitializing {
-        require(ownerList.length <= maxNumOwners, "SafeOwnableUpgradeable:exceed maximum number owners");
+        require(ownerList.length > 0, "SafeOwnableUpgradeable: ownerList must be greater than 0");
+        require(ownerList.length <= maxNumOwners, "SafeOwnableUpgradeable: exceed maximum number owners");
         require(signRequired_ != 0, "SafeOwnableUpgradeable: signRequired is zero");
 
         signRequired = signRequired_;
