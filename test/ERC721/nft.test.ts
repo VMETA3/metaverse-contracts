@@ -1,6 +1,6 @@
 import {expect} from '../chai-setup';
 import {ethers, upgrades, deployments, getUnnamedAccounts, getNamedAccounts} from 'hardhat';
-import {TestERC20, VM3Elf} from '../../typechain';
+import {TestERC20, VM3NFTV1} from '../../typechain';
 import {setupUser, setupUsers} from '../utils';
 import web3 from 'web3';
 
@@ -8,27 +8,27 @@ const OnehundredToken = ethers.BigNumber.from('100000000000000000000');
 const TenToken = OnehundredToken.div(10);
 
 const setup = deployments.createFixture(async () => {
-  await deployments.fixture('VM3Elf');
+  await deployments.fixture('VM3NFTV1');
   await deployments.fixture('TestERC20');
   const {deployer, Administrator1, Administrator2} = await getNamedAccounts();
 
-  const Elf = await ethers.getContractFactory('VM3Elf');
+  const NFT = await ethers.getContractFactory('VM3NFTV1');
 
   const Costs = TenToken; // Costs
-  const Name = 'VMeta3 Elf';
-  const Symbol = 'VM3Elf';
+  const Name = 'VMeta3 NFT';
+  const Symbol = 'VM3NFT';
   const signRequired = 2;
   const TokenURI =
-    '{"name":"elf 7","description":"this is the 7th elf!","price":"0.09","image":"https://gateway.pinata.cloud/ipfs/QmNzNDMzrVduVrQAvJrp8GwdifEKiQmY1gSfPbq12C8Mhy"}';
+    '{"name":"NFT 7","description":"this is the 7th NFT!","price":"0.09","image":"https://gateway.pinata.cloud/ipfs/QmNzNDMzrVduVrQAvJrp8GwdifEKiQmY1gSfPbq12C8Mhy"}';
   const owners = [Administrator1, Administrator2];
 
-  const VM3ElfProxy = await upgrades.deployProxy(Elf, [Name, Symbol, owners, signRequired]);
-  await VM3ElfProxy.deployed();
+  const VM3NFTProxy = await upgrades.deployProxy(NFT, [Name, Symbol, owners, signRequired]);
+  await VM3NFTProxy.deployed();
 
   const contracts = {
     ERC20Token: <TestERC20>await ethers.getContract('TestERC20'),
-    Elf: <VM3Elf>await ethers.getContract('VM3Elf'),
-    Proxy: <VM3Elf>VM3ElfProxy,
+    NFT: <VM3NFTV1>await ethers.getContract('VM3NFTV1'),
+    Proxy: <VM3NFTV1>VM3NFTProxy,
   };
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
 
@@ -47,13 +47,13 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe('VM3Elf Token', () => {
+describe('VM3NFT Token', () => {
   describe('proxy information', async () => {
     it('The logical contract data is empty', async () => {
-      const {Elf} = await setup();
-      expect(await Elf.name()).to.be.eq('');
-      expect(await Elf.symbol()).to.be.eq('');
-      expect(await Elf.symbol()).to.be.eq('');
+      const {NFT} = await setup();
+      expect(await NFT.name()).to.be.eq('');
+      expect(await NFT.symbol()).to.be.eq('');
+      expect(await NFT.symbol()).to.be.eq('');
     });
     it('The agent contract has the correct information', async () => {
       const {Proxy, ERC20Token, Name, Symbol, Costs, Administrator1, Administrator2} = await setup();
@@ -70,7 +70,7 @@ describe('VM3Elf Token', () => {
   });
 
   describe('complete casting process', async () => {
-    it('Deposit to self and build Elf', async () => {
+    it('Deposit to sNFT and build NFT', async () => {
       const {ERC20Token, Proxy, OnehundredToken, TenToken, TokenURI, users, deployer, Administrator1, Administrator2} =
         await setup();
       Administrator1.Proxy.setERC20(ERC20Token.address);
@@ -100,7 +100,7 @@ describe('VM3Elf Token', () => {
         'SafeOwnableUpgradeable: operation not in pending'
       );
 
-      // Step 3: Buiuld ELF
+      // Step 3: Buiuld NFT
       await Administrator1.Proxy.AddOpHashToPending(
         web3.utils.hexToBytes(await Proxy.HashToSign(await Proxy.getBuildHash(User.address, TokenURI, Nonce1))),
         Sign
@@ -132,7 +132,7 @@ describe('VM3Elf Token', () => {
       expect(await Proxy.ownerOf(1)).to.be.eq(User.address);
     });
 
-    it('Deposit to someone and build Elf', async () => {
+    it('Deposit to someone and build NFT', async () => {
       const {ERC20Token, Proxy, OnehundredToken, TenToken, TokenURI, users, deployer, Administrator1, Administrator2} =
         await setup();
       Administrator1.Proxy.setERC20(ERC20Token.address);
@@ -159,17 +159,17 @@ describe('VM3Elf Token', () => {
         .withArgs(Someone.address, TenToken.mul(2));
 
       // Step 2: Verify unauthorized transactions
-      await expect(User.Proxy.buildTo(Someone.address, TokenURI, Nonce)).to.revertedWith('Elf: Insufficient deposits');
+      await expect(User.Proxy.buildTo(Someone.address, TokenURI, Nonce)).to.revertedWith('NFT: Insufficient deposits');
 
-      // // Step 3: Buiuld ELF But the minter needs to own ERC20Token
-      // await expect(User.Proxy.buildTo(Someone.address, TokenURI, Nonce)).to.revertedWith('Elf: Insufficient deposits');
+      // // Step 3: Buiuld NFT But the minter needs to own ERC20Token
+      // await expect(User.Proxy.buildTo(Someone.address, TokenURI, Nonce)).to.revertedWith('NFT: Insufficient deposits');
 
-      // Step 4: Deposit ERC20Token to self
+      // Step 4: Deposit ERC20Token to sNFT
       await expect(User.Proxy.deposit(TenToken.mul(2)))
         .to.emit(Proxy, 'Deposit')
         .withArgs(User.address, TenToken.mul(2));
 
-      // // Step 5: Buiuld ELF
+      // // Step 5: Buiuld NFT
       await Administrator1.Proxy.AddOpHashToPending(
         web3.utils.hexToBytes(await Proxy.HashToSign(await Proxy.getBuildHash(Someone.address, TokenURI, Nonce))),
         Sign
@@ -217,7 +217,7 @@ describe('VM3Elf Token', () => {
         'SafeOwnableUpgradeable: operation not in pending'
       );
       // await expect(User.Proxy.refundAtDisposal(Administrator1.address, TenToken.mul(5), Nonce3)).to.revertedWith(
-      //   'Elf: Insufficient atDisposal'
+      //   'NFT: Insufficient atDisposal'
       // );
 
       // Step 9-2: Normal extraction

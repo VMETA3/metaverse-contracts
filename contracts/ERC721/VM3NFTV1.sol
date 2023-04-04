@@ -10,7 +10,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../Abstract/SafeOwnableUpgradeable.sol";
 
-contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnableUpgradeable {
+contract VM3NFTV1 is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20;
 
     event Build(address indexed user, uint256 tokenId);
@@ -32,14 +32,14 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
     constructor() initializer {}
 
     modifier lock() {
-        require(locked == 0, "Elf: LOCKED");
+        require(locked == 0, "VM3NFT: LOCKED");
         locked = 1;
         _;
         locked = 0;
     }
 
     modifier deduct() {
-        require(_depositAmounts[_msgSender()] >= _costs, "Elf: Insufficient deposits");
+        require(_depositAmounts[_msgSender()] >= _costs, "VM3NFT: Insufficient deposits");
         _depositAmounts[_msgSender()] -= _costs;
         atDisposal += _costs;
         _;
@@ -148,7 +148,7 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
     }
 
     function _deposit(address to, uint256 amount) private {
-        require(amount > 0, "Elf: Amount is zero");
+        require(amount > 0, "VM3NFT: Amount is zero");
         ERC20Token.transferFrom(_msgSender(), address(this), amount);
         totalERC20Token += amount;
         _depositAmounts[to] += amount;
@@ -168,8 +168,8 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
         address to,
         uint256 amount
     ) private {
-        require(amount > 0, "Elf: amount is zero");
-        require(_depositAmounts[from] >= amount, "Elf: Insufficient balance");
+        require(amount > 0, "VM3NFT: amount is zero");
+        require(_depositAmounts[from] >= amount, "VM3NFT: Insufficient balance");
         _depositAmounts[from] -= amount;
         ERC20Token.transfer(to, amount);
         emit Withdraw(to, amount);
@@ -180,7 +180,7 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
         uint256 amount,
         uint256 nonce_
     ) public lock onlyOperationPendding(HashToSign(getRefundHash(to, amount, nonce_))) {
-        require(_depositAmounts[to] >= amount, "Elf: Insufficient user balance");
+        require(_depositAmounts[to] >= amount, "VM3NFT: Insufficient user balance");
         _depositAmounts[to] -= amount;
         _refund(to, amount, false);
     }
@@ -190,7 +190,7 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
         uint256 amount,
         uint256 nonce_
     ) public lock onlyOperationPendding(HashToSign(getrefundAtDisposalHash(to, amount, nonce_))) {
-        require(atDisposal >= amount, "Elf: Insufficient atDisposal");
+        require(atDisposal >= amount, "VM3NFT: Insufficient atDisposal");
         atDisposal -= amount;
         _refund(to, amount, true);
     }
@@ -200,7 +200,7 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
         uint256 amount,
         bool disposal
     ) private onlyOwner {
-        require(amount > 0, "Elf: amount is zero");
+        require(amount > 0, "VM3NFT: amount is zero");
         require(ERC20Token.balanceOf(address(this)) >= amount, "");
         ERC20Token.transfer(to, amount);
         emit Refund(to, amount, disposal);

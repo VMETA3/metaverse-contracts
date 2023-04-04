@@ -1,22 +1,22 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 
-const Name = 'VMeta3 Elf';
-const Symbol = 'VM3Elf';
+const Name = 'VMeta3 NFT';
+const Symbol = 'VM3NFT';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deploy, log} = hre.deployments;
   const {deployer} = await hre.getNamedAccounts();
-  const LogicName = 'VM3Elf';
-  const ProxyName = 'Proxy_VM3Elf';
+  const LogicName = 'VM3NFTV1';
+  const ProxyName = 'Proxy_VMeta3NFT';
 
-  const Elf = await deploy(LogicName, {
+  const NFT = await deploy(LogicName, {
     from: deployer,
     log: true,
     autoMine: true, // speed up deployment on local network (ganache, hardhat), no effect on live networks
   });
-  if (Elf.newlyDeployed) {
-    log(`contract Land deployed at ${Elf.address} using ${Elf.receipt?.gasUsed} gas`);
+  if (NFT.newlyDeployed) {
+    log(`contract Land deployed at ${NFT.address} using ${NFT.receipt?.gasUsed} gas`);
   }
 
   await deployProxy(hre, LogicName, ProxyName);
@@ -43,4 +43,4 @@ const deployProxy = async function (hre: HardhatRuntimeEnvironment, LogicName: s
 };
 
 export default func;
-func.tags = ['VM3Elf'];
+func.tags = ['VM3NFT'];
