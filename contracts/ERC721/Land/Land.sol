@@ -4,11 +4,11 @@ pragma solidity ^0.8.9;
 // Open Zeppelin libraries for controlling upgradability and access.
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import {ERC721URIStorageUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 
 import "../../Abstract/SafeOwnableUpgradeable.sol";
 
-contract Land is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnableUpgradeable {
+contract Land is Initializable, ERC721URIStorageUpgradeable, UUPSUpgradeable, SafeOwnableUpgradeable {
     event Activation(uint256 tokenId, uint256 active, bool status);
 
     struct activeValue {
@@ -19,7 +19,6 @@ contract Land is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnableU
     }
 
     uint256 public _tokenIdCounter;
-    mapping(uint256 => string) tokenURIs;
     bytes32 private DOMAIN;
     mapping(uint256 => activeValue) _active_value;
 
@@ -59,7 +58,7 @@ contract Land is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnableU
     ) public onlyOwner returns (uint256) {
         uint256 newItemId = _tokenIdCounter;
         _safeMint(player, newItemId);
-        tokenURIs[newItemId] = tokenURI_;
+        _setTokenURI(newItemId, tokenURI_);
         _active_value[newItemId].conditions = conditions;
         _active_value[newItemId].status = false;
         _increment();
@@ -98,11 +97,6 @@ contract Land is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnableU
         uint256 nonce_
     ) public view returns (bytes32) {
         return _hashToSign(getInjectActiveHash(tokenId, active, to, nonce_));
-    }
-
-    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
-        _requireMinted(tokenId);
-        return tokenURIs[tokenId];
     }
 
     function getLandStatus(uint256 tokenId) public view returns (bool) {
