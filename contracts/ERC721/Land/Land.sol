@@ -58,7 +58,7 @@ contract Land is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnableU
         string memory tokenURI_
     ) public onlyOwner returns (uint256) {
         uint256 newItemId = _tokenIdCounter;
-        _mint(player, newItemId);
+        _safeMint(player, newItemId);
         tokenURIs[newItemId] = tokenURI_;
         _active_value[newItemId].conditions = conditions;
         _active_value[newItemId].status = false;
