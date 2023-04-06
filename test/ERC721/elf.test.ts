@@ -1,7 +1,7 @@
-import {expect} from '../chai-setup';
-import {ethers, upgrades, deployments, getUnnamedAccounts, getNamedAccounts} from 'hardhat';
-import {TestERC20, VM3Elf} from '../../typechain';
-import {setupUser, setupUsers} from '../utils';
+import { expect } from '../chai-setup';
+import { ethers, upgrades, deployments, getUnnamedAccounts, getNamedAccounts } from 'hardhat';
+import { TestERC20, VM3Elf } from '../../typechain';
+import { setupUser, setupUsers } from '../utils';
 import web3 from 'web3';
 
 const OnehundredToken = ethers.BigNumber.from('100000000000000000000');
@@ -10,7 +10,7 @@ const TenToken = OnehundredToken.div(10);
 const setup = deployments.createFixture(async () => {
   await deployments.fixture('VM3Elf');
   await deployments.fixture('TestERC20');
-  const {deployer, Administrator1, Administrator2} = await getNamedAccounts();
+  const { deployer, Administrator1, Administrator2 } = await getNamedAccounts();
 
   const Elf = await ethers.getContractFactory('VM3Elf');
 
@@ -50,13 +50,13 @@ const setup = deployments.createFixture(async () => {
 describe('VM3Elf Token', () => {
   describe('proxy information', async () => {
     it('The logical contract data is empty', async () => {
-      const {Elf} = await setup();
+      const { Elf } = await setup();
       expect(await Elf.name()).to.be.eq('');
       expect(await Elf.symbol()).to.be.eq('');
       expect(await Elf.symbol()).to.be.eq('');
     });
     it('The agent contract has the correct information', async () => {
-      const {Proxy, ERC20Token, Name, Symbol, Costs, Administrator1, Administrator2} = await setup();
+      const { Proxy, ERC20Token, Name, Symbol, Costs, Administrator1, Administrator2 } = await setup();
       Administrator1.Proxy.setERC20(ERC20Token.address);
       Administrator1.Proxy.setCosts(TenToken);
       expect(await Proxy.name()).to.be.eq(Name);
@@ -71,7 +71,7 @@ describe('VM3Elf Token', () => {
 
   describe('complete casting process', async () => {
     it('Deposit to self and build Elf', async () => {
-      const {ERC20Token, Proxy, OnehundredToken, TenToken, TokenURI, users, deployer, Administrator1, Administrator2} =
+      const { ERC20Token, Proxy, OnehundredToken, TenToken, TokenURI, users, deployer, Administrator1, Administrator2 } =
         await setup();
       Administrator1.Proxy.setERC20(ERC20Token.address);
       Administrator1.Proxy.setCosts(TenToken);
@@ -133,7 +133,7 @@ describe('VM3Elf Token', () => {
     });
 
     it('Deposit to someone and build Elf', async () => {
-      const {ERC20Token, Proxy, OnehundredToken, TenToken, TokenURI, users, deployer, Administrator1, Administrator2} =
+      const { ERC20Token, Proxy, OnehundredToken, TenToken, TokenURI, users, deployer, Administrator1, Administrator2 } =
         await setup();
       Administrator1.Proxy.setERC20(ERC20Token.address);
       Administrator1.Proxy.setCosts(TenToken);
@@ -246,7 +246,7 @@ describe('VM3Elf Token', () => {
 
   describe('deposit and withdraw', async () => {
     it('Verify users deposit balance', async () => {
-      const {ERC20Token, Proxy, OnehundredToken, TenToken, users, deployer, Administrator1} = await setup();
+      const { ERC20Token, Proxy, OnehundredToken, TenToken, users, deployer, Administrator1 } = await setup();
       Administrator1.Proxy.setERC20(ERC20Token.address);
       Administrator1.Proxy.setCosts(TenToken);
       const User = users[8];
@@ -270,7 +270,7 @@ describe('VM3Elf Token', () => {
       expect(await Proxy.balanceOfERC20(Someone.address)).to.be.eq(TenToken);
     });
     it('Verify users withdraw balance', async () => {
-      const {ERC20Token, Proxy, OnehundredToken, TenToken, users, deployer, Administrator1} = await setup();
+      const { ERC20Token, Proxy, OnehundredToken, TenToken, users, deployer, Administrator1 } = await setup();
       Administrator1.Proxy.setERC20(ERC20Token.address);
       Administrator1.Proxy.setCosts(TenToken);
       const User = users[7];
@@ -299,7 +299,7 @@ describe('VM3Elf Token', () => {
     });
 
     it('Verify admin refund balance', async () => {
-      const {ERC20Token, Proxy, OnehundredToken, TenToken, Administrator1, Administrator2, users, deployer} =
+      const { ERC20Token, Proxy, OnehundredToken, TenToken, Administrator1, Administrator2, users, deployer } =
         await setup();
       Administrator1.Proxy.setERC20(ERC20Token.address);
       Administrator1.Proxy.setCosts(TenToken);
@@ -326,6 +326,77 @@ describe('VM3Elf Token', () => {
         .withArgs(U1.address, TenToken, false);
       expect(await ERC20Token.balanceOf(U1.address)).to.be.eq(TenToken);
       expect(await Proxy.balanceOfERC20(U1.address)).to.be.eq(TenToken.mul(9));
+    });
+  });
+
+  describe('modify basic information', async () => {
+    it('Update tokenURI', async () => {
+      const { ERC20Token, Proxy, OnehundredToken, TenToken, TokenURI, users, deployer, Administrator1, Administrator2 } =
+        await setup();
+      Administrator1.Proxy.setERC20(ERC20Token.address);
+      Administrator1.Proxy.setCosts(TenToken);
+      const User = users[7];
+      const Nonce1 = 0;
+      const BuildHash = web3.utils.hexToBytes(await Proxy.getBuildHash(User.address, TokenURI, Nonce1));
+      const Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(BuildHash));
+      const Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(BuildHash));
+      const Sign = [Sig1, Sig2];
+
+      // Step 1: Deposit ERC20Token
+      await expect(deployer.ERC20Token.transfer(User.address, OnehundredToken))
+        .to.emit(ERC20Token, 'Transfer')
+        .withArgs(deployer.address, User.address, OnehundredToken);
+
+      await expect(User.ERC20Token.approve(Proxy.address, OnehundredToken))
+        .to.emit(ERC20Token, 'Approval')
+        .withArgs(User.address, Proxy.address, OnehundredToken);
+
+      await expect(User.Proxy.deposit(TenToken.mul(2)))
+        .to.emit(Proxy, 'Deposit')
+        .withArgs(User.address, TenToken.mul(2));
+
+      // Step 2: Verify unauthorized transactions
+      await expect(User.Proxy.build(TokenURI, Nonce1)).to.revertedWith(
+        'SafeOwnableUpgradeable: operation not in pending'
+      );
+
+      // Step 3: Buiuld ELF
+      await Administrator1.Proxy.AddOpHashToPending(
+        web3.utils.hexToBytes(await Proxy.HashToSign(await Proxy.getBuildHash(User.address, TokenURI, Nonce1))),
+        Sign
+      );
+      await expect(User.Proxy.build(TokenURI, Nonce1)).to.emit(Proxy, 'Build').withArgs(User.address, 0);
+
+      // Step 4: Try to use the last signature and get an error
+      await expect(User.Proxy.build(TokenURI, Nonce1)).to.revertedWith(
+        'SafeOwnableUpgradeable: operation not in pending'
+      );
+
+      // Step 5: Buiuld again
+      const Nonce2 = 1;
+      const BuildHash2 = web3.utils.hexToBytes(await Proxy.getBuildHash(User.address, TokenURI, Nonce2));
+      const Sig1_2 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(BuildHash2));
+      const Sig2_2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(BuildHash2));
+      const Sign2 = [Sig1_2, Sig2_2];
+      await Administrator1.Proxy.AddOpHashToPending(
+        web3.utils.hexToBytes(await Proxy.HashToSign(await Proxy.getBuildHash(User.address, TokenURI, Nonce2))),
+        Sign2
+      );
+      const TokenId = 1;
+      await expect(User.Proxy.build(TokenURI, Nonce2)).to.emit(Proxy, 'Build').withArgs(User.address, TokenId);
+
+      // Step 6: Verify the ELS data
+      expect(await Proxy.balanceOf(User.address)).to.be.eq(2);
+      expect(await Proxy.tokenURI(0)).to.be.eq(TokenURI);
+      expect(await Proxy.tokenURI(1)).to.be.eq(TokenURI);
+      expect(await Proxy.ownerOf(0)).to.be.eq(User.address);
+      expect(await Proxy.ownerOf(1)).to.be.eq(User.address);
+
+      // Step 7: Update the tokenURI
+      const NewTokenURI =
+        '{"name":"new elf 8","description":"this is the 8th elf!","price":"0.09","image":"https://gateway.pinata.cloud/ipfs/QmNzNDMzrVduVrQAvJrp8GwdifEKiQmY1gSfPbq12C8Mhy"}';
+      await expect(Administrator1.Proxy.updateTokenURI(TokenId, NewTokenURI)).to.emit(Proxy, 'UpdateTokenURI').withArgs(TokenId, NewTokenURI);
+      expect(await Proxy.tokenURI(TokenId)).to.be.eq(NewTokenURI);
     });
   });
 });

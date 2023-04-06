@@ -17,6 +17,7 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
     event Deposit(address indexed user, uint256 amount);
     event Withdraw(address indexed user, uint256 amount);
     event Refund(address indexed user, uint256 amount, bool Disposal);
+    event UpdateTokenURI(uint256 indexed tokenId, string tokenURI);
 
     IERC20 public ERC20Token;
     bytes32 private DOMAIN;
@@ -216,5 +217,11 @@ contract VM3Elf is Initializable, ERC721Upgradeable, UUPSUpgradeable, SafeOwnabl
 
     function balanceOfERC20(address account) public view returns (uint256) {
         return _depositAmounts[account];
+    }
+
+    function updateTokenURI(uint256 tokenId, string memory tokenURI_) public onlyOwner {
+        _requireMinted(tokenId);
+        _tokenURIs[tokenId] = tokenURI_;
+        emit UpdateTokenURI(tokenId, tokenURI_);
     }
 }
