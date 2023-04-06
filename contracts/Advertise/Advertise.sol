@@ -125,7 +125,6 @@ contract Advertise is IAdvertise, ERC721Ticket {
     }
 
     function getSurpriseLuckyId() public view returns (uint256) {
-        require(Surprise.surprise_is_revealed(), "getSurpriseLuckyId: Not yet revealed");
         return Surprise.surprise_surprise_id();
     }
 

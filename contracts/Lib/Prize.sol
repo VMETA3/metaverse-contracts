@@ -44,6 +44,7 @@ library Prize {
     }
 
     function surprise_surprise_id(Surprise storage _surprise) public view returns (uint256) {
+        require(_surprise.is_revealed, "Prize: Not yet revealed");
         return _surprise.surprise_id;
     }
 
