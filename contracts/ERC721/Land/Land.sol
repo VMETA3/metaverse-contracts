@@ -100,7 +100,7 @@ contract Land is Initializable, ERC721URIStorageUpgradeable, UUPSUpgradeable, Sa
             keccak256(
                 abi.encodePacked(
                     DOMAIN,
-                    keccak256("injectActive(uint256,uint256,uint256)"),
+                    keccak256("injectActive(uint256,uint256,address,uint256)"),
                     tokenId,
                     active,
                     to,
@@ -206,6 +206,7 @@ contract Land is Initializable, ERC721URIStorageUpgradeable, UUPSUpgradeable, Sa
         address account,
         uint256 nonce
     ) private onlyOperationPending(_hashToSign(getInjectActiveHash(tokenId, active, account, nonce))) {
+        require(active > 0, "Land: active value must be greater than zero");
         require(
             _active_value[tokenId].total + active <= _active_value[tokenId].conditions,
             "Land: too many active values"
