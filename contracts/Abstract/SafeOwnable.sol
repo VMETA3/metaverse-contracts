@@ -13,13 +13,13 @@ abstract contract SafeOwnable is Context {
         OpCancel
     }
 
-    address[6] private _owners;
+    address[6] private _owners; // array of owners
     mapping(address => uint8) private _ownersIndex; // from 1
-    uint8 private _numOwners;
-    uint8 public constant maxNumOwners = 5;
+    uint8 private _numOwners; // number of owners
+    uint8 public constant maxNumOwners = 5; // maximum number of owners
     // the number of owners that must confirm before operation run.
-    uint8 public immutable signRequired;
-    mapping(bytes32 => OpStatus) public operationsStatus;
+    uint8 public immutable signRequired; // number of required confirmations
+    mapping(bytes32 => OpStatus) public operationsStatus; // mapping of operation status
 
     uint256 public nonce; //avoid operation hash being the same
 
@@ -44,11 +44,19 @@ abstract contract SafeOwnable is Context {
         require(signRequired <= _numOwners, "SafeOwnable: owners less than signRequired");
     }
 
+    /**
+     * @dev Modifier that allows only the owner to call the function.
+     */
     modifier onlyOwner() {
         require(_ownersIndex[_msgSender()] > 0, "SafeOwnable: caller is not the owner");
         _;
     }
 
+    /**
+     * @dev Modifier that allows only multiple owners to call the function.
+     * @param dataHash The hash of the operation to be confirmed.
+     * @param sigs The signatures of the owners to confirm the operation.
+     */
     modifier onlyMultipleOwner(bytes32 dataHash, bytes[] memory sigs) {
         uint8 confirmed = 0;
         bool[maxNumOwners + 1] memory mark;
@@ -72,12 +80,21 @@ abstract contract SafeOwnable is Context {
         _;
     }
 
+    /**
+     * @dev Modifier that allows only pending operations to call the function.
+     * @param opHash The hash of the operation to be confirmed.
+     */
     modifier onlyOperationPending(bytes32 opHash) {
         require(operationsStatus[opHash] == OpStatus.OpPending, "SafeOwnable: operation not in pending");
         operationsStatus[opHash] = OpStatus.OpExecuted;
         _;
     }
 
+    /**
+     * @dev Adds an operation hash to the pending list for confirmation by multiple owners.
+     * @param opHash The hash of the operation to be added.
+     * @param sigs The signatures of the owners to confirm the operation.
+     */
     function AddOpHashToPending(bytes32 opHash, bytes[] memory sigs) public onlyMultipleOwner(opHash, sigs) {
         require(operationsStatus[opHash] == OpStatus.OpDefault, "SafeOwnable: operation was not submitted yet");
         operationsStatus[opHash] = OpStatus.OpPending;
@@ -109,6 +126,10 @@ abstract contract SafeOwnable is Context {
         emit OwnershipTransferred(oldOwner, newOwner);
     }
 
+    /**
+     * @dev Returns an array of all the owners of the contract.
+     * @return An array of all the owners of the contract.
+     */
     function owners() public view returns (address[6] memory) {
         return _owners;
     }

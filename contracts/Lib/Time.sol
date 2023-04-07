@@ -12,6 +12,11 @@ library Time {
         uint256 _current_time;
     }
 
+    /**
+     * @dev Get the current timestamp
+     * @param timestamp The timestamp struct
+     * @return The current timestamp
+     */
     function _getCurrentTime(Timestamp storage timestamp) internal view returns (uint256) {
         if (timestamp._current_time > 0) {
             return timestamp._current_time;
@@ -20,6 +25,11 @@ library Time {
         }
     }
 
+    /**
+     * @dev Set the current timestamp
+     * @param timestamp The timestamp struct
+     * @param time_map The new timestamp
+     */
     function _setCurrentTime(Timestamp storage timestamp, uint256 time_map) internal {
         timestamp._current_time = time_map;
     }

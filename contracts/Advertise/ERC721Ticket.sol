@@ -11,8 +11,8 @@ contract ERC721Ticket is ERC721URIStorage, Ownable {
 
     // Control NFTIDs
     using Counters for Counters.Counter;
-    Counters.Counter private _tokenIds;
-    uint256 public total;
+    Counters.Counter private _tokenIds; // Counter for tracking NFT IDs
+    uint256 public total; // Total number of NFTs that can be minted
 
     constructor(
         string memory name,
@@ -22,6 +22,12 @@ contract ERC721Ticket is ERC721URIStorage, Ownable {
         total = total_ - 1;
     }
 
+    /**
+     * @dev Award a single NFT to a player
+     * @param player The address of the player to receive the NFT
+     * @param tokenURI The URI of the NFT metadata
+     * @return The ID of the newly minted NFT
+     */
     function awardItem(address player, string memory tokenURI) public onlyOwner returns (uint256) {
         uint256 newItemId = _tokenIds.current();
         require(newItemId <= total, "UpperLimit: the limit has been reached");
@@ -33,6 +39,13 @@ contract ERC721Ticket is ERC721URIStorage, Ownable {
         return newItemId;
     }
 
+    /**
+     * @dev Award multiple NFTs to a player
+     * @param player The address of the player to receive the NFTs
+     * @param tokenURI The URI of the NFT metadata
+     * @param total_ The number of NFTs to award
+     * @return True if the operation was successful
+     */
     function batchAwardItem(
         address player,
         string memory tokenURI,
