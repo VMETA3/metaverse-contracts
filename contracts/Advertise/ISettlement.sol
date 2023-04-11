@@ -11,7 +11,9 @@ interface ISettlement {
     /********************
      * Public Functions *
      ********************/
-    function settlementERC20(address token, uint256 ticket_id) external;
+    function universalSettlementERC20(uint256 ticket_id) external;
+
+    function luckySettlementERC20(uint256 ticket_id) external;
 
     function settlementERC721(uint256 ticket_id) external;
 }

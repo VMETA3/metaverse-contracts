@@ -36,15 +36,6 @@ contract Settlement is ISettlement, Ownable {
     }
 
     /**
-     * @dev Modifier to check if the token is valid.
-     * @param token The token to check.
-     */
-    modifier isToken(address token) {
-        require((token == AD.getUniversalToken() || token == AD.getSurpriseToken()), "Settlement: invalid token");
-        _;
-    }
-
-    /**
      * @dev Get the address of the universal token.
      * @return The address of the universal token.
      */
@@ -105,18 +96,28 @@ contract Settlement is ISettlement, Ownable {
     /**
      * @dev Record the prize amount for a given ticket ID and update the prize claim status.
      * @param ticket_id The ID of the ticket to record the prize amount for.
-     * @param is_lucky A boolean indicating whether the ticket is the grand prize winner.
+     * @param is_universal A boolean indicating whether the prize is the universal token.
      */
-    function _recordPrizeAmount(uint256 ticket_id, bool is_lucky) private {
-        _prize_claim_status[ticket_id].Universal = true;
+    function _recordPrizeAmount(uint256 ticket_id, bool is_universal) private {
         bool burn = true;
-        if (is_lucky) {
-            burn = false;
+
+        if (is_universal) {
+            _prize_claim_status[ticket_id].Universal = true;
+        } else {
             _prize_claim_status[ticket_id].SurpriseToken = true;
-            if (_prize_claim_status[ticket_id].SurpriseNFT) {
+        }
+
+        if (ticket_id == AD.getSurpriseLuckyId()) {
+            burn = false;
+            if (
+                _prize_claim_status[ticket_id].Universal &&
+                _prize_claim_status[ticket_id].SurpriseToken &&
+                _prize_claim_status[ticket_id].SurpriseNFT
+            ) {
                 burn = true;
             }
         }
+
         if (burn) {
             AD.burn(ticket_id);
         }
@@ -131,18 +132,6 @@ contract Settlement is ISettlement, Ownable {
         if (_prize_claim_status[ticket_id].SurpriseToken) {
             AD.burn(ticket_id);
         }
-    }
-
-    /**
-     * @dev Get the prize amount and recipient for a given ticket ID and token.
-     * @param ticket_id The ID of the ticket to get the prize for.
-     * @param token The token to get the prize in.
-     * @return _to The recipient of the prize.
-     * @return amount The amount of the prize.
-     */
-    function _getPrize(uint256 ticket_id, address token) private view returns (address _to, uint256 amount) {
-        _to = AD.ownerOf(ticket_id);
-        amount = _getAmount(ticket_id, token);
     }
 
     /**
@@ -167,53 +156,64 @@ contract Settlement is ISettlement, Ownable {
     }
 
     /**
-     * @dev Get the amount of universal tokens for a given token.
-     * @param token The token to get the universal amount for.
-     * @return The amount of universal tokens.
+     * @dev Settle an ERC20 prize for a given ticket ID.
+     * @param ticket_id The ID of the ticket to settle the prize for.
+     * @param token The address of the ERC20 token to settle.
+     * @param amount The amount of the ERC20 token to settle.
      */
-    function _getUniversalAmount(address token) private view returns (uint256) {
-        if (AD.getUniversalToken() != token) return 0;
-        return AD.getUniversalAmount();
-    }
-
-    /**
-     * @dev Get the amount of surprise tokens and universal tokens for a given token.
-     * @param token The token to get the amount for.
-     * @return total The amount of surprise tokens and universal tokens.
-     */
-    function _getSurpriseAmount(address token) private view returns (uint256 total) {
-        if (AD.getSurpriseToken() != token) return 0;
-        total += AD.getSurpriseAmount();
-        total += _getUniversalAmount(token);
-        return total;
-    }
-
-    /**
-     * @dev Get the amount of tokens for a given ticket ID and token.
-     * @param ticket_id The ID of the ticket to get the amount for.
-     * @param token The token to get the amount in.
-     * @return amount The amount of tokens.
-     */
-    function _getAmount(uint256 ticket_id, address token) private view returns (uint256 amount) {
-        amount = 0;
-        if (ticket_id == AD.getSurpriseLuckyId()) {
-            if (_prize_claim_status[ticket_id].SurpriseToken == false) amount = _getSurpriseAmount(token);
-        } else {
-            if (_prize_claim_status[ticket_id].Universal == false) amount = _getUniversalAmount(token);
-        }
-    }
-
-    /**
-     * @dev Transfer the prize tokens for a given ticket ID to the recipient, record the prize amount, and emit a Settlement event.
-     * @param token The token to transfer the prize in.
-     * @param ticket_id The ID of the ticket to transfer the prize for.
-     */
-    function settlementERC20(address token, uint256 ticket_id) external override noReentrant isEnded isToken(token) {
-        (address _to, uint256 amount) = _getPrize(ticket_id, token);
+    function _settle(
+        uint256 ticket_id,
+        address token,
+        uint256 amount
+    ) private {
         require(amount > 0, "Settlement: there are no assets to settle");
+        address _to = AD.ownerOf(ticket_id);
         IERC20(token).safeTransfer(_to, amount);
-        _recordPrizeAmount(ticket_id, (ticket_id == AD.getSurpriseLuckyId()));
         emit Settlement(_to, token, amount);
+    }
+
+    /**
+     * @dev Settle the universal token prize for a given ticket ID.
+     * @param ticket_id The ID of the ticket to settle the prize for.
+     */
+    function _universalSettlement(uint256 ticket_id) private {
+        require(_prize_claim_status[ticket_id].Universal == false, "Settlement: the prize has been claimed");
+        _settle(ticket_id, AD.getUniversalToken(), AD.getUniversalAmount());
+        _prize_claim_status[ticket_id].Universal = true;
+    }
+
+    /**
+     * @dev Settle the surprise token prize for a given ticket ID.
+     * @param ticket_id The ID of the ticket to settle the prize for.
+     */
+    function _surpriseSettlement(uint256 ticket_id) private {
+        require(
+            _prize_claim_status[ticket_id].SurpriseToken == false,
+            "Settlement: the surprise prize has been claimed"
+        );
+        _settle(ticket_id, AD.getSurpriseToken(), AD.getSurpriseAmount());
+        _prize_claim_status[ticket_id].SurpriseToken = true;
+    }
+
+    /**
+     * @dev Settle the universal token prize for a given ticket ID and record the prize claim status.
+     * @param ticket_id The ID of the ticket to settle the prize for.
+     */
+    function universalSettlementERC20(uint256 ticket_id) external override noReentrant isEnded {
+        _universalSettlement(ticket_id);
+        _recordPrizeAmount(ticket_id, true);
+    }
+
+    /**
+     * @dev Settle the surprise token prize for a given ticket ID and record the prize claim status.
+     * @param ticket_id The ID of the ticket to settle the prize for.
+     */
+    function luckySettlementERC20(uint256 ticket_id) external override noReentrant isEnded isLucky(ticket_id) {
+        if (!_prize_claim_status[ticket_id].Universal) {
+            _universalSettlement(ticket_id);
+        }
+        _surpriseSettlement(ticket_id);
+        _recordPrizeAmount(ticket_id, false);
     }
 
     /**
