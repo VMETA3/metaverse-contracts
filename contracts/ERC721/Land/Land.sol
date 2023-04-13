@@ -68,7 +68,7 @@ contract Land is Initializable, ERC721URIStorageUpgradeable, UUPSUpgradeable, Sa
         _safeMint(player, newItemId);
         _setTokenURI(newItemId, tokenURI_);
         _active_value[newItemId].conditions = conditions;
-        _active_value[newItemId].status = false;
+        _active_value[newItemId].status = (conditions == 0) ? true : false;
         _increment();
         return newItemId;
     }

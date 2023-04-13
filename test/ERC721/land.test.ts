@@ -109,5 +109,14 @@ describe('Land Token', () => {
         .to.emit(Proxy, 'Activation')
         .withArgs(TokenOne, TestConditions, true);
     });
+    
+    it('If conditions are set to 0, the default activated', async () => {
+      const { Administrator1, Proxy } = await setup();
+      const SpecialConditions = 0;
+      await Administrator1.Proxy.awardItem(Administrator1.address, SpecialConditions, TokenURI);
+      const TokenZreo = 0;
+      expect(await Proxy.ownerOf(TokenZreo)).to.eq(Administrator1.address);
+      expect(await Proxy.getLandStatus(TokenZreo)).to.eq(true);
+    });
   });
 });
