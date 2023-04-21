@@ -46,7 +46,8 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
      */
     struct SaleInfo {
         uint256 number;
-        bool puased;
+        // release paused or not
+        bool paused;
         uint256 limitAmount;
         uint256 soldAmount;
         uint256 exchangeRate; // VM3:USD, decimal is 18
@@ -62,7 +63,8 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
     }
     struct AssetInfo {
         uint256 saleNumber; // which sale  user buy
-        bool puased;
+        // release puased or not
+        bool paused;
         uint256 amount;
         uint256 amountWithdrawn;
         uint64 latestWithdrawTime;
@@ -85,7 +87,7 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
     mapping(uint256 => SaleInfo) public saleInfoMap;
     uint256[] public saleNumberList;
     //  user=>saleNumber=>AssetInfo
-    mapping(address => mapping(uint256 => AssetInfo)) public userAssertInfos;
+    mapping(address => mapping(uint256 => AssetInfo)) public userAssetInfos;
 
     constructor(
         address[] memory owners,
@@ -102,7 +104,7 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
     }
 
     modifier onlyAssetExist(address user, uint256 saleNumber) {
-        require(userAssertInfos[user][saleNumber].saleNumber > 0, "PrivateSale: Asset is not exist");
+        require(userAssetInfos[user][saleNumber].saleNumber > 0, "PrivateSale: Asset is not exist");
         _;
     }
     modifier onlySaleExist(uint256 saleNumber) {
@@ -115,7 +117,6 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
     }
     modifier onlySaleInProgress(uint256 saleNumber) {
         SaleInfo storage saleInfo = saleInfoMap[saleNumber];
-        require(!saleInfo.puased, "PrivateSale:Sale puased");
         require(
             saleInfo.startTime > block.timestamp && saleInfo.endTime < block.timestamp,
             "PrivateSale: Sale is not in progress"
@@ -125,6 +126,14 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
     modifier onlyInWhiteList(uint256 saleNumber) {
         SaleInfo storage saleInfo = saleInfoMap[saleNumber];
         require(saleInfo.whiteList[msg.sender], "PrivateSale:user not in whiteList");
+        _;
+    }
+    modifier onlySaleReleaseNotPuased(uint256 saleNumber) {
+        require(!saleInfoMap[saleNumber].paused, "PrivateSale:sale release paused");
+        _;
+    }
+    modifier onlyUserReleaseNotPaused(address user, uint256 saleNumber) {
+        require(!userAssetInfos[user][saleNumber].paused, "PrivateSale:user release paused");
         _;
     }
 
@@ -187,7 +196,7 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         saleInfo.soldAmount += gotVM3;
 
         //modify user asset
-        AssetInfo storage assetInfo = userAssertInfos[msg.sender][saleNumber];
+        AssetInfo storage assetInfo = userAssetInfos[msg.sender][saleNumber];
         if (assetInfo.saleNumber == 0) {
             assetInfo.saleNumber = saleNumber;
             assetInfo.releaseTotalMonths = saleInfo.releaseTotalMonths;
@@ -299,11 +308,36 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         saleInfoMap[saleNumber].releaseTotalMonths = releaseTotalMonths;
     }
 
-    function puaseSale(
+    function setSaleReleaseStatus(
         uint256 saleNumber,
+        bool paused, // true pused; false not paused
         bytes[] memory sigs
-    ) external onlyMultipleOwner(_hashToSign(_puaseSaleHash(saleNumber, nonce)), sigs) onlySaleExist(saleNumber) {
-        saleInfoMap[saleNumber].puased = true;
+    )
+        external
+        onlyMultipleOwner(
+            _hashToSign(
+                keccak256(
+                    abi.encodePacked(
+                        DOMAIN,
+                        keccak256("setSaleReleaseStatus(uint256 saleNumber,bool paused)"),
+                        saleNumber,
+                        paused,
+                        nonce
+                    )
+                )
+            ),
+            sigs
+        )
+        onlySaleExist(saleNumber)
+    {
+        saleInfoMap[saleNumber].paused = paused;
+    }
+
+    function setUserReleaseStatus(
+        uint256 saleNumber,
+        bool paused // true pused; false not paused
+    ) external onlyAssetExist(msg.sender, saleNumber) {
+        userAssetInfos[msg.sender][saleNumber].paused = paused;
     }
 
     function setWhiteList(
@@ -379,8 +413,8 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         )
         onlyAssetExist(user, saleNumber)
     {
-        require(userAssertInfos[user][saleNumber].withdrawnMonths < releaseTotalMonths);
-        userAssertInfos[user][saleNumber].releaseTotalMonths = releaseTotalMonths;
+        require(userAssetInfos[user][saleNumber].withdrawnMonths < releaseTotalMonths);
+        userAssetInfos[user][saleNumber].releaseTotalMonths = releaseTotalMonths;
     }
 
     function _canGotVM3(
@@ -420,8 +454,16 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         return gotVM3;
     }
 
-    function _witdrawVM3(uint256 saleNumber) internal {
-        AssetInfo memory assetInfo = userAssertInfos[msg.sender][saleNumber];
+    ///@dev user release VM3 to his account
+    function _witdrawVM3(
+        uint256 saleNumber
+    )
+        internal
+        onlyAssetExist(msg.sender, saleNumber)
+        onlySaleReleaseNotPuased(saleNumber)
+        onlyUserReleaseNotPaused(msg.sender, saleNumber)
+    {
+        AssetInfo memory assetInfo = userAssetInfos[msg.sender][saleNumber];
         require(block.timestamp - assetInfo.latestWithdrawTime > MONTH, "PrivateSale: has withdraw recently");
 
         if (assetInfo.latestWithdrawTime == 0) {
@@ -530,10 +572,6 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
                     nonce_
                 )
             );
-    }
-
-    function _puaseSaleHash(uint256 saleNumber, uint256 nonce_) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(DOMAIN, keccak256("puaseSale(uint256 saleNumber)"), saleNumber, nonce_));
     }
 
     function _setUserReleaseMonthsHash(
