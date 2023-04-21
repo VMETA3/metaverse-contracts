@@ -258,10 +258,28 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         address paymentToken,
         address paymentTokenPriceFeed,
         bytes[] memory sigs
-    ) external onlyMultipleOwner(_hashToSign(_addPaymentTokenHash(paymentToken, paymentTokenPriceFeed, nonce)), sigs) {
+    )
+        external
+        onlyMultipleOwner(
+            _hashToSign(
+                keccak256(
+                    abi.encodePacked(
+                        DOMAIN,
+                        keccak256("addPaymentToken(address paymentToken,address paymentTokenPriceFeed)"),
+                        paymentToken,
+                        paymentTokenPriceFeed,
+                        nonce
+                    )
+                )
+            ),
+            sigs
+        )
+    {
         (, int256 price, , , ) = AggregatorV3Interface(paymentTokenPriceFeed).latestRoundData();
         require(price > 0, "PrivateSale: priceFeed not exist");
         paymentTokenPriceFeedMap[paymentToken] = paymentTokenPriceFeed;
+
+        emit NewPaymentTokenAdded(paymentToken, paymentTokenPriceFeed);
     }
 
     function setSaleTime(
@@ -483,23 +501,6 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
     /*
      * calculate hash,just for safeOwnable, internal function
      */
-    function _addPaymentTokenHash(
-        address paymentToken_,
-        address paymentTokenPriceFeed_,
-        uint256 nonce_
-    ) internal view returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(
-                    DOMAIN,
-                    keccak256("addPaymentToken(address paymentToken,address paymentTokenPriceFeed)"),
-                    paymentToken_,
-                    paymentTokenPriceFeed_,
-                    nonce_
-                )
-            );
-    }
-
     function _createSaleHash(
         uint256 saleNumber_,
         uint256 limitAmount_,
