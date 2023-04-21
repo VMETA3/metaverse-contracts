@@ -332,7 +332,7 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
     {
         SaleInfo storage saleInfo = saleInfoMap[saleNumber];
         for (uint256 i = 0; i < users.length; i++) {
-            saleInfo.whiteList[users[i]] = true;
+            saleInfo.whiteList[users[i]] = added;
         }
         emit SetWhiteList(saleNumber, users, added);
     }
