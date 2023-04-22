@@ -24,23 +24,28 @@ const config: HardhatUserConfig = {
     ],
   },
   namedAccounts: {
-    deployer: 0,
+    deployer: {
+      default: 0,
+    },
     owner: {
       default: 1,
     },
     Administrator1: {
       default: 2,
       bsc_test: '0xfeaD27a71FDA8458d8b9f9055B50800eCbCaA10e',
+      bsc: '0xf40413Db764D1bd4bDa4A60860b3ab8be80F08DA',
     },
     Administrator2: {
       default: 3,
       bsc_test: '0x2Fe8D2Bc3FD37cD7AcbbE668A7a12F957e79D708',
+      bsc: '0xcc2cD97a436EA5C4AD3f9E347014425cdBc6FfEF',
     },
     interestAccount: {
       default: 5,
     },
     possessor: {
       default: 1,
+      bsc: '0xf40413Db764D1bd4bDa4A60860b3ab8be80F08DA',
     },
   },
   networks: addForkConfiguration({
@@ -70,6 +75,10 @@ const config: HardhatUserConfig = {
     vmeta3_goerli: {
       url: node_url('vmeta3_goerli'),
       accounts: accounts('vmeta3_goerli'),
+    },
+    bsc: {
+      url: node_url('bsc'),
+      accounts: accounts('bsc'),
     },
     bsc_test: {
       url: node_url('bsc_test'),
