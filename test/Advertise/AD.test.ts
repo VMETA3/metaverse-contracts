@@ -1,11 +1,11 @@
-import { expect } from '../chai-setup';
-import { ethers, deployments, getUnnamedAccounts, getNamedAccounts } from 'hardhat';
-import { Advertise, Settlement, VM3, TestERC20 } from '../../typechain';
-import { setupUser, setupUsers } from '../utils';
+import {expect} from '../chai-setup';
+import {ethers, deployments, getUnnamedAccounts, getNamedAccounts} from 'hardhat';
+import {Advertise, Settlement, VM3, TestERC20} from '../../typechain';
+import {setupUser, setupUsers} from '../utils';
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture('Advertise');
-  const { deployer, possessor } = await getNamedAccounts();
+  const {deployer, possessor} = await getNamedAccounts();
   const contracts = {
     VM3: <VM3>await ethers.getContract('VM3'),
     Advertise: <Advertise>await ethers.getContract('Advertise'),
@@ -27,13 +27,13 @@ const URI = '{"test":"test"}';
 
 describe('Advertise Token', () => {
   it('basic information', async () => {
-    const { Advertise } = await setup();
+    const {Advertise} = await setup();
     expect(await Advertise.name()).to.be.eq(Name);
     expect(await Advertise.symbol()).to.be.eq(Symbol);
     expect(await Advertise.total()).to.be.eq(Total);
   });
   it('Normal award acceptance process', async () => {
-    const { deployer, possessor, users, VM3, Advertise, Settlement } = await setup();
+    const {deployer, possessor, users, VM3, Advertise, Settlement} = await setup();
     const User1 = users[1];
     const User2 = users[2];
     const User3 = users[3];
@@ -76,7 +76,7 @@ describe('Advertise Token', () => {
       'isActive: Not at the specified time'
     );
 
-    const startTime = (await ethers.provider.getBlock("latest")).timestamp;
+    const startTime = (await ethers.provider.getBlock('latest')).timestamp;
     const oneDay = 60 * 60 * 24;
     const sevenDay = 60 * 60 * 24 * 7;
     const endTime = startTime + sevenDay;
@@ -85,7 +85,7 @@ describe('Advertise Token', () => {
       .to.emit(Advertise, 'SetAdTime')
       .withArgs(startTime, endTime);
     // Adjust the time to the activity period
-    await ethers.provider.send("evm_mine", [startTime + oneDay]);
+    await ethers.provider.send('evm_mine', [startTime + oneDay]);
     // Distribute raffle tickets to users
     await deployer.Advertise.transferFrom(deployer.address, User1.address, 0);
     await deployer.Advertise.transferFrom(deployer.address, User2.address, 1);
@@ -93,7 +93,7 @@ describe('Advertise Token', () => {
     await deployer.Advertise.transferFrom(deployer.address, User4.address, 3);
 
     // End of activity
-    await ethers.provider.send("evm_mine", [endTime]);
+    await ethers.provider.send('evm_mine', [endTime]);
     await expect(deployer.Advertise.superLuckyMan(3)).to.emit(Advertise, 'SuperLuckyMan').withArgs(3); // A lucky person is born.
 
     // Collect it for yourself
@@ -128,7 +128,7 @@ describe('Advertise Token', () => {
     await expect(Advertise.ownerOf(3)).to.be.revertedWith('ERC721: invalid token ID');
   });
   it('Repeated calls settlementERC20', async () => {
-    const { deployer, possessor, users, VM3, Advertise, Settlement } = await setup();
+    const {deployer, possessor, users, VM3, Advertise, Settlement} = await setup();
     const User1 = users[1];
     const User2 = users[2];
     const User3 = users[3];
@@ -166,7 +166,7 @@ describe('Advertise Token', () => {
       'isActive: Not at the specified time'
     );
 
-    const startTime = (await ethers.provider.getBlock("latest")).timestamp;
+    const startTime = (await ethers.provider.getBlock('latest')).timestamp;
     const oneDay = 60 * 60 * 24;
     const sevenDay = 60 * 60 * 24 * 7;
     const endTime = startTime + sevenDay;
@@ -175,7 +175,7 @@ describe('Advertise Token', () => {
       .to.emit(Advertise, 'SetAdTime')
       .withArgs(startTime, endTime);
     // Adjust the time to the activity period
-    await ethers.provider.send("evm_mine", [startTime + oneDay]);
+    await ethers.provider.send('evm_mine', [startTime + oneDay]);
     // Distribute raffle tickets to users
     await deployer.Advertise.transferFrom(deployer.address, User1.address, 0);
     await deployer.Advertise.transferFrom(deployer.address, User2.address, 1);
@@ -183,12 +183,14 @@ describe('Advertise Token', () => {
     await deployer.Advertise.transferFrom(deployer.address, User4.address, 3);
 
     // End of activity
-    await ethers.provider.send("evm_mine", [endTime]);
+    await ethers.provider.send('evm_mine', [endTime]);
     await expect(deployer.Advertise.superLuckyMan(3)).to.emit(Advertise, 'SuperLuckyMan').withArgs(3); // A lucky person is born.
 
     // Regular user repeated settlement
     await User1.Settlement.universalSettlementERC20(0);
-    await expect(User1.Settlement.universalSettlementERC20(0)).to.be.revertedWith('Settlement: the prize has been claimed');
+    await expect(User1.Settlement.universalSettlementERC20(0)).to.be.revertedWith(
+      'Settlement: the prize has been claimed'
+    );
 
     // Lucky man repeated settlement
     await User4.Settlement.luckySettlementERC20(3);
@@ -198,7 +200,7 @@ describe('Advertise Token', () => {
   });
 
   it('Should succeed In the case of different tokens, normal award acceptance process', async () => {
-    const { deployer, possessor, users, VM3, Advertise, Settlement } = await setup();
+    const {deployer, possessor, users, VM3, Advertise, Settlement} = await setup();
     const User1 = users[1];
     const User2 = users[2];
     const User3 = users[3];
@@ -245,7 +247,7 @@ describe('Advertise Token', () => {
       'isActive: Not at the specified time'
     );
 
-    const startTime = (await ethers.provider.getBlock("latest")).timestamp;
+    const startTime = (await ethers.provider.getBlock('latest')).timestamp;
     const oneDay = 60 * 60 * 24;
     const sevenDay = 60 * 60 * 24 * 7;
     const endTime = startTime + sevenDay;
@@ -254,7 +256,7 @@ describe('Advertise Token', () => {
       .to.emit(Advertise, 'SetAdTime')
       .withArgs(startTime, endTime);
     // Adjust the time to the activity period
-    await ethers.provider.send("evm_mine", [startTime + oneDay]);
+    await ethers.provider.send('evm_mine', [startTime + oneDay]);
     // Distribute raffle tickets to users
     await deployer.Advertise.transferFrom(deployer.address, User1.address, 0);
     await deployer.Advertise.transferFrom(deployer.address, User2.address, 1);
@@ -262,7 +264,7 @@ describe('Advertise Token', () => {
     await deployer.Advertise.transferFrom(deployer.address, User4.address, 3);
 
     // End of activity
-    await ethers.provider.send("evm_mine", [endTime]);
+    await ethers.provider.send('evm_mine', [endTime]);
     await expect(deployer.Advertise.superLuckyMan(3)).to.emit(Advertise, 'SuperLuckyMan').withArgs(3); // A lucky person is born.
 
     // Collect it for yourself
@@ -300,7 +302,7 @@ describe('Advertise Token', () => {
   });
 
   it('Should failed in the case of different tokens, ordinary user call luckySettlementERC20', async () => {
-    const { deployer, possessor, users, VM3, Advertise, Settlement } = await setup();
+    const {deployer, possessor, users, VM3, Advertise, Settlement} = await setup();
     const User1 = users[1];
     const User2 = users[2];
     const User3 = users[3];
@@ -347,7 +349,7 @@ describe('Advertise Token', () => {
       'isActive: Not at the specified time'
     );
 
-    const startTime = (await ethers.provider.getBlock("latest")).timestamp;
+    const startTime = (await ethers.provider.getBlock('latest')).timestamp;
     const oneDay = 60 * 60 * 24;
     const sevenDay = 60 * 60 * 24 * 7;
     const endTime = startTime + sevenDay;
@@ -356,7 +358,7 @@ describe('Advertise Token', () => {
       .to.emit(Advertise, 'SetAdTime')
       .withArgs(startTime, endTime);
     // Adjust the time to the activity period
-    await ethers.provider.send("evm_mine", [startTime + oneDay]);
+    await ethers.provider.send('evm_mine', [startTime + oneDay]);
     // Distribute raffle tickets to users
     await deployer.Advertise.transferFrom(deployer.address, User1.address, 0);
     await deployer.Advertise.transferFrom(deployer.address, User2.address, 1);
@@ -364,17 +366,16 @@ describe('Advertise Token', () => {
     await deployer.Advertise.transferFrom(deployer.address, User4.address, 3);
 
     // End of activity
-    await ethers.provider.send("evm_mine", [endTime]);
+    await ethers.provider.send('evm_mine', [endTime]);
     await expect(deployer.Advertise.superLuckyMan(3)).to.emit(Advertise, 'SuperLuckyMan').withArgs(3); // A lucky person is born.
 
-    await expect(User1.Settlement.luckySettlementERC20(0))
-      .to.be.revertedWith(
-        'Settlement: this ticket did not win the grand prize'
-      );
+    await expect(User1.Settlement.luckySettlementERC20(0)).to.be.revertedWith(
+      'Settlement: this ticket did not win the grand prize'
+    );
   });
 
   it('Should succeed In the case of different tokens, lucky people call universalSettlementERC20 first, and then luckySettlementERC20', async () => {
-    const { deployer, possessor, users, VM3, Advertise, Settlement } = await setup();
+    const {deployer, possessor, users, VM3, Advertise, Settlement} = await setup();
     const User1 = users[1];
     const User2 = users[2];
     const User3 = users[3];
@@ -421,7 +422,7 @@ describe('Advertise Token', () => {
       'isActive: Not at the specified time'
     );
 
-    const startTime = (await ethers.provider.getBlock("latest")).timestamp;
+    const startTime = (await ethers.provider.getBlock('latest')).timestamp;
     const oneDay = 60 * 60 * 24;
     const sevenDay = 60 * 60 * 24 * 7;
     const endTime = startTime + sevenDay;
@@ -430,7 +431,7 @@ describe('Advertise Token', () => {
       .to.emit(Advertise, 'SetAdTime')
       .withArgs(startTime, endTime);
     // Adjust the time to the activity period
-    await ethers.provider.send("evm_mine", [startTime + oneDay]);
+    await ethers.provider.send('evm_mine', [startTime + oneDay]);
     // Distribute raffle tickets to users
     await deployer.Advertise.transferFrom(deployer.address, User1.address, 0);
     await deployer.Advertise.transferFrom(deployer.address, User2.address, 1);
@@ -438,7 +439,7 @@ describe('Advertise Token', () => {
     await deployer.Advertise.transferFrom(deployer.address, User4.address, 3);
 
     // End of activity
-    await ethers.provider.send("evm_mine", [endTime]);
+    await ethers.provider.send('evm_mine', [endTime]);
     await expect(deployer.Advertise.superLuckyMan(3)).to.emit(Advertise, 'SuperLuckyMan').withArgs(3); // A lucky person is born.
 
     // Call universalSettlementERC20 first
@@ -446,7 +447,6 @@ describe('Advertise Token', () => {
       .to.emit(Settlement, 'Settlement')
       .withArgs(User4.address, UniversalToken, UniversalAmount);
     expect(await VM3.balanceOf(User4.address)).to.be.eq(UniversalAmount);
-
 
     // And then call luckySettlementERC20
     await expect(User1.Settlement.luckySettlementERC20(3))
@@ -459,7 +459,7 @@ describe('Advertise Token', () => {
   });
 
   it('Repeated calls settlementERC721', async () => {
-    const { deployer, possessor, users, VM3, Advertise, Settlement } = await setup();
+    const {deployer, possessor, users, VM3, Advertise, Settlement} = await setup();
     const User4 = users[4];
 
     // Mint prize
@@ -490,7 +490,7 @@ describe('Advertise Token', () => {
     await possessor.VM3.transfer(Settlement.address, 14);
     await TERC721.transferFrom(deployer.address, Settlement.address, 0);
 
-    const startTime = (await ethers.provider.getBlock("latest")).timestamp;
+    const startTime = (await ethers.provider.getBlock('latest')).timestamp;
     const oneDay = 60 * 60 * 24;
     const sevenDay = 60 * 60 * 24 * 7;
     const endTime = startTime + sevenDay;
@@ -499,12 +499,12 @@ describe('Advertise Token', () => {
       .to.emit(Advertise, 'SetAdTime')
       .withArgs(startTime, endTime);
     // Adjust the time to the activity period
-    await ethers.provider.send("evm_mine", [startTime + oneDay]);
+    await ethers.provider.send('evm_mine', [startTime + oneDay]);
     // Distribute raffle tickets to users
     await deployer.Advertise.transferFrom(deployer.address, User4.address, 3);
 
     // End of activity
-    await ethers.provider.send("evm_mine", [endTime]);
+    await ethers.provider.send('evm_mine', [endTime]);
     await expect(deployer.Advertise.superLuckyMan(3)).to.emit(Advertise, 'SuperLuckyMan').withArgs(3); // A lucky person is born.
 
     // Lucky man repeated settlement

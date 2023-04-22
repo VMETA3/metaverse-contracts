@@ -91,7 +91,7 @@ library Prize {
     }
 
     /**
-    * @dev Sets the Surprise reward
+     * @dev Sets the Surprise reward
      */
     function _setSurprise(
         Surprise storage _surprise,

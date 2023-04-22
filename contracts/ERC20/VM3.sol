@@ -27,7 +27,7 @@ contract VM3 is SafeOwnable, ERC20Burnable {
         );
     }
 
-     /**
+    /**
      * @dev Returns the hash to be signed by the owners to mint tokens
      * @param to The address to mint tokens to
      * @param amount The amount of tokens to mint

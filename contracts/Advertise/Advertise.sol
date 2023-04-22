@@ -35,7 +35,10 @@ contract Advertise is IAdvertise, ERC721Ticket {
      * @dev Modifier to check if the current time is within the advertisement period
      */
     modifier isActive() {
-        require((block.timestamp >= starting_time && block.timestamp <= end_time), "isActive: Not at the specified time");
+        require(
+            (block.timestamp >= starting_time && block.timestamp <= end_time),
+            "isActive: Not at the specified time"
+        );
         _;
     }
 
