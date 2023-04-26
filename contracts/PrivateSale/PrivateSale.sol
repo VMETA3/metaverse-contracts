@@ -2,11 +2,11 @@
 pragma solidity ^0.8.9;
 import {SafeOwnable} from "../Abstract/SafeOwnable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "../Library/SafeCast.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 interface IERC20 {
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
+
+    function transfer(address to, uint256 amount) external returns (bool);
 
     function decimals() external view returns (uint8);
 
@@ -15,21 +15,14 @@ interface IERC20 {
 
 contract PrivateSale is SafeOwnable, ReentrancyGuard {
     /*
-     * library
-     */
-    using SafeCast for uint256;
-
-    /*
      * constant
      */
     uint64 public constant MONTH = 60 * 60 * 24 * 30;
-    uint256 public constant DefaultMaxSell = 100000 * 10 ** 18;
-    uint256 public constant DefaultMinSell = 10 ** 18;
 
     /*
      * events
      */
-    event SaleCreated(address from, uint256 indexed saleNumber, uint256 limitAmount, uint256 exchangeRate);
+    event SaleCreated(address from, uint256 indexed saleNumber, uint256 limitAmount, uint256 price);
     event BuyVM3(
         address indexed from,
         uint256 indexed saleNumber,
@@ -37,8 +30,7 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         uint256 amount,
         uint256 totalVM3
     );
-    event WithdrawVM3(address indexed from, uint256 indexed saleNumber, uint256 amount);
-    event NewPaymentTokenAdded(address paymentToken, address paymentTokenPriceFeed);
+    event WithdrawVM3(address indexed recipient, uint256 indexed saleNumber, uint256 amount);
     event SetWhiteList(uint256 indexed saleNumber, address[] users, bool added);
 
     /*
@@ -50,7 +42,7 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         bool paused;
         uint256 limitAmount;
         uint256 soldAmount;
-        uint256 exchangeRate; // VM3:USD, decimal is 18
+        uint256 price; // USD, decimal is 18
         uint64 startTime;
         uint64 endTime;
         uint64 releaseStartTime;
@@ -58,8 +50,8 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         // who can buy this vm3 sale
         mapping(address => bool) whiteList;
         // max/min sell vm3 amount for everyone
-        uint256 maxSell;
-        uint256 minSell;
+        uint256 maxBuy;
+        uint256 minBuy;
     }
     struct AssetInfo {
         uint256 saleNumber; // which sale  user buy
@@ -75,19 +67,16 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
     /*
      * storage
      */
-    address public USDT;
     address public VM3;
     bytes32 public DOMAIN;
-    // BNB（0x0000000000000000000000000000000000000000）
     // USDT（0x55d398326f99059fF775485246999027B3197955）
     // BUSD（0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56）
-    // WBNB（0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c）
-    // ETH（0x2170Ed0880ac9A755fd29B2688956BD959F933F8）
-    mapping(address => address) public paymentTokenPriceFeedMap;
+    mapping(address => bool) public paymentTokenMap;
     mapping(uint256 => SaleInfo) public saleInfoMap;
     uint256[] public saleNumberList;
     //  user=>saleNumber=>AssetInfo
     mapping(address => mapping(uint256 => AssetInfo)) public userAssetInfos;
+    bool public enableWhiteList = true;
 
     constructor(
         address[] memory owners,
@@ -99,8 +88,10 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
             abi.encode(keccak256("Domain(uint256 chainId,address verifyingContract)"), block.chainid, address(this))
         );
 
-        USDT = usdt;
         VM3 = vm3;
+
+        //initialize payment token
+        paymentTokenMap[usdt] = true;
     }
 
     modifier onlyAssetExist(address user, uint256 saleNumber) {
@@ -112,53 +103,86 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         _;
     }
     modifier onlySupportedPaymentToken(address paymentToken) {
-        require(paymentTokenPriceFeedMap[paymentToken] != address(0));
+        require(paymentTokenMap[paymentToken], "PrivateSale:PaymentToken is not supported");
         _;
     }
     modifier onlySaleInProgress(uint256 saleNumber) {
         SaleInfo storage saleInfo = saleInfoMap[saleNumber];
         require(
-            saleInfo.startTime > block.timestamp && saleInfo.endTime < block.timestamp,
+            _blockTimestamp() >= saleInfo.startTime && _blockTimestamp() <= saleInfo.endTime,
             "PrivateSale: Sale is not in progress"
         );
         _;
     }
     modifier onlyInWhiteList(uint256 saleNumber) {
         SaleInfo storage saleInfo = saleInfoMap[saleNumber];
-        require(saleInfo.whiteList[msg.sender], "PrivateSale:user not in whiteList");
+        require(saleInfo.whiteList[msg.sender] || !enableWhiteList, "PrivateSale:user not in whiteList");
         _;
     }
-    modifier onlySaleReleaseNotPuased(uint256 saleNumber) {
-        require(!saleInfoMap[saleNumber].paused, "PrivateSale:sale release paused");
+    modifier onlySaleNotPuased(uint256 saleNumber) {
+        require(!saleInfoMap[saleNumber].paused, "PrivateSale:sale paused");
         _;
     }
     modifier onlyUserReleaseNotPaused(address user, uint256 saleNumber) {
-        require(!userAssetInfos[user][saleNumber].paused, "PrivateSale:user release paused");
+        require(!userAssetInfos[user][saleNumber].paused, "PrivateSale:user asset paused");
+        _;
+    }
+    modifier onlySaleReleaseStart(uint256 saleNumber) {
+        SaleInfo storage saleInfo = saleInfoMap[saleNumber];
+        require(saleInfo.releaseStartTime < _blockTimestamp(), "PrivateSale:sale release not start");
         _;
     }
 
-    ///@dev create a sale
-    ///@param saleNumber the number of the sale
-    ///@param limitAmount_ total VM3 that will be  sold
-    ///@param exchangeRate_ VM3 price, VM3/USD
     function createSale(
         uint256 saleNumber,
-        uint256 limitAmount_,
-        uint256 exchangeRate_,
+        uint256 limitAmount,
+        uint256 price,
+        uint256 maxBuy,
+        uint256 minBuy,
+        uint64[3] memory times, // startTime, endTime, releaseStartTime
+        uint32 releaseTotalMonths,
         bytes[] memory sigs
-    ) external onlyMultipleOwner(_hashToSign(_createSaleHash(saleNumber, limitAmount_, exchangeRate_, nonce)), sigs) {
-        require(saleNumber > 0);
-        require(saleInfoMap[saleNumber].number == 0);
+    )
+        external
+        onlyMultipleOwner(
+            _hashToSign(
+                keccak256(
+                    abi.encodePacked(
+                        DOMAIN,
+                        keccak256(
+                            "createSale(uint256 saleNumber,uint256 limitAmount,uint256 price,uint256 maxBuy,uint256 minBuy,uint64 startTime,uint64 endTime,uint64 releaseStartTime,uint32 releaseTotalMonths)"
+                        ),
+                        saleNumber,
+                        limitAmount,
+                        price,
+                        maxBuy,
+                        minBuy,
+                        times[0],
+                        times[1],
+                        times[2],
+                        releaseTotalMonths,
+                        nonce
+                    )
+                )
+            ),
+            sigs
+        )
+    {
+        require(saleNumber > 0 && saleInfoMap[saleNumber].number == 0);
 
         SaleInfo storage saleInfo = saleInfoMap[saleNumber];
         saleInfo.number = saleNumber;
-        saleInfo.limitAmount = limitAmount_;
-        saleInfo.exchangeRate = exchangeRate_;
-        saleInfo.minSell = DefaultMinSell;
-        saleInfo.maxSell = DefaultMaxSell;
+        saleInfo.limitAmount = limitAmount;
+        saleInfo.price = price;
+        saleInfo.maxBuy = maxBuy;
+        saleInfo.minBuy = minBuy;
+        saleInfo.startTime = times[0];
+        saleInfo.endTime = times[1];
+        saleInfo.releaseStartTime = times[2];
+        saleInfo.releaseTotalMonths = releaseTotalMonths;
 
         saleNumberList.push(saleNumber);
-        emit SaleCreated(msg.sender, saleNumber, limitAmount_, exchangeRate_);
+        emit SaleCreated(msg.sender, saleNumber, limitAmount, price);
     }
 
     ///@dev buy VM3
@@ -177,6 +201,7 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         onlyInWhiteList(saleNumber)
         onlySaleInProgress(saleNumber)
         onlySupportedPaymentToken(paymentToken)
+        onlySaleNotPuased(saleNumber)
     {
         SaleInfo storage saleInfo = saleInfoMap[saleNumber];
         if (paymentToken == address(0)) {
@@ -185,14 +210,9 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
             IERC20(paymentToken).transferFrom(msg.sender, address(this), amount);
         }
 
-        uint256 gotVM3 = _canGotVM3(
-            paymentToken,
-            amount,
-            saleInfo.exchangeRate,
-            paymentTokenPriceFeedMap[paymentToken]
-        );
+        uint256 gotVM3 = _canGotVM3(paymentToken, amount, saleInfo.price);
         require(gotVM3 + saleInfo.soldAmount < saleInfo.limitAmount, "PrivateSale: Exceed sale limit");
-        require(gotVM3 > saleInfo.minSell);
+        require(gotVM3 > saleInfo.minBuy);
         saleInfo.soldAmount += gotVM3;
 
         //modify user asset
@@ -202,14 +222,14 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
             assetInfo.releaseTotalMonths = saleInfo.releaseTotalMonths;
         }
         assetInfo.amount += gotVM3;
-        require(assetInfo.amount < saleInfo.maxSell);
+        require(assetInfo.amount < saleInfo.maxBuy);
         emit BuyVM3(msg.sender, saleNumber, paymentToken, amount, gotVM3);
     }
 
     ///@dev user take out VM3
-    function withdrawVM3(uint64[] memory saleNumbers) external nonReentrant {
+    function withdrawVM3(uint64[] memory saleNumbers, address recipient) external nonReentrant {
         for (uint64 i = 0; i < saleNumbers.length; i++) {
-            _witdrawVM3(saleNumbers[i]);
+            _witdrawVM3(saleNumbers[i], recipient);
         }
     }
 
@@ -224,7 +244,7 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         )
     {
         uint256 amount = IERC20(VM3).balanceOf(address(this));
-        IERC20(VM3).transferFrom(address(this), msg.sender, amount);
+        IERC20(VM3).transfer(msg.sender, amount);
     }
 
     ///@dev manager take out sale volume
@@ -250,83 +270,11 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         }
 
         IERC20 token = IERC20(tokenAddress);
-        token.transferFrom(address(this), receipt, token.balanceOf(address(this)));
+        token.transfer(receipt, token.balanceOf(address(this)));
     }
 
     //settings
-    function addPaymentToken(
-        address paymentToken,
-        address paymentTokenPriceFeed,
-        bytes[] memory sigs
-    )
-        external
-        onlyMultipleOwner(
-            _hashToSign(
-                keccak256(
-                    abi.encodePacked(
-                        DOMAIN,
-                        keccak256("addPaymentToken(address paymentToken,address paymentTokenPriceFeed)"),
-                        paymentToken,
-                        paymentTokenPriceFeed,
-                        nonce
-                    )
-                )
-            ),
-            sigs
-        )
-    {
-        (, int256 price, , , ) = AggregatorV3Interface(paymentTokenPriceFeed).latestRoundData();
-        require(price > 0, "PrivateSale: priceFeed not exist");
-        paymentTokenPriceFeedMap[paymentToken] = paymentTokenPriceFeed;
-
-        emit NewPaymentTokenAdded(paymentToken, paymentTokenPriceFeed);
-    }
-
-    function setSaleTime(
-        uint64 saleNumber,
-        uint64 startTime,
-        uint64 endTime,
-        bytes[] memory sigs
-    )
-        external
-        onlyMultipleOwner(_hashToSign(_setSaleTimeHash(saleNumber, startTime, endTime, nonce)), sigs)
-        onlySaleExist(saleNumber)
-    {
-        require(startTime < endTime);
-        saleInfoMap[saleNumber].startTime = startTime;
-        saleInfoMap[saleNumber].endTime = endTime;
-    }
-
-    function setSaleExchangeRate(
-        uint64 saleNumber,
-        uint256 exchangeRate,
-        bytes[] memory sigs
-    )
-        external
-        onlyMultipleOwner(_hashToSign(_setSaleExchangeRateHash(saleNumber, exchangeRate, nonce)), sigs)
-        onlySaleExist(saleNumber)
-    {
-        saleInfoMap[saleNumber].exchangeRate = exchangeRate;
-    }
-
-    function setReleaseParams(
-        uint256 saleNumber,
-        uint64 releaseStartTime,
-        uint32 releaseTotalMonths,
-        bytes[] memory sigs
-    )
-        external
-        onlyMultipleOwner(
-            _hashToSign(_setReleaseParamsHash(saleNumber, releaseStartTime, releaseTotalMonths, nonce)),
-            sigs
-        )
-        onlySaleExist(saleNumber)
-    {
-        saleInfoMap[saleNumber].releaseStartTime = releaseStartTime;
-        saleInfoMap[saleNumber].releaseTotalMonths = releaseTotalMonths;
-    }
-
-    function setSaleReleaseStatus(
+    function setSaleStatus(
         uint256 saleNumber,
         bool paused, // true pused; false not paused
         bytes[] memory sigs
@@ -337,7 +285,7 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
                 keccak256(
                     abi.encodePacked(
                         DOMAIN,
-                        keccak256("setSaleReleaseStatus(uint256 saleNumber,bool paused)"),
+                        keccak256("setSaleStatus(uint256 saleNumber,bool paused)"),
                         saleNumber,
                         paused,
                         nonce
@@ -389,35 +337,6 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         emit SetWhiteList(saleNumber, users, added);
     }
 
-    function setSaleMaxAndMinSell(
-        uint256 saleNumber,
-        uint256 maxSell,
-        uint256 minSell,
-        bytes[] memory sigs
-    )
-        external
-        onlySaleExist(saleNumber)
-        onlyMultipleOwner(
-            _hashToSign(
-                keccak256(
-                    abi.encodePacked(
-                        DOMAIN,
-                        keccak256("setSaleMaxAndMinSell(uint256 saleNumber,uint256 maxSell,uint256 minSell)"),
-                        saleNumber,
-                        maxSell,
-                        minSell,
-                        nonce
-                    )
-                )
-            ),
-            sigs
-        )
-    {
-        SaleInfo storage saleInfo = saleInfoMap[saleNumber];
-        saleInfo.maxSell = maxSell;
-        saleInfo.minSell = minSell;
-    }
-
     function setUserReleaseMonths(
         address user,
         uint256 saleNumber,
@@ -426,7 +345,18 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
     )
         external
         onlyMultipleOwner(
-            _hashToSign(_hashToSign(_setUserReleaseMonthsHash(user, saleNumber, releaseTotalMonths, nonce))),
+            _hashToSign(
+                keccak256(
+                    abi.encodePacked(
+                        DOMAIN,
+                        keccak256("setUserReleaseMonths(address user,uint256 saleNumber,uint32 releaseTotalMonths)"),
+                        user,
+                        saleNumber,
+                        releaseTotalMonths,
+                        nonce
+                    )
+                )
+            ),
             sigs
         )
         onlyAssetExist(user, saleNumber)
@@ -435,167 +365,115 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
         userAssetInfos[user][saleNumber].releaseTotalMonths = releaseTotalMonths;
     }
 
-    function _canGotVM3(
+    function setEnableWhiteList(
+        bool enable,
+        bytes[] memory sigs
+    )
+        external
+        onlyMultipleOwner(
+            _hashToSign(
+                keccak256(abi.encodePacked(DOMAIN, keccak256("setEnableWhiteList(bool enable)"), enable, nonce))
+            ),
+            sigs
+        )
+    {
+        enableWhiteList = enable;
+    }
+
+    function setPaymentToken(
         address paymentToken,
-        uint256 amount,
-        uint256 exchangeRate,
-        address priceFeed
-    ) internal view returns (uint256) {
-        int256 price = 10 ** 18;
-        if (paymentToken != USDT) {
-            (, price, , , ) = AggregatorV3Interface(priceFeed).latestRoundData();
-        }
+        bool enable,
+        bytes[] memory sigs
+    )
+        external
+        onlyMultipleOwner(
+            _hashToSign(
+                keccak256(
+                    abi.encodePacked(
+                        DOMAIN,
+                        keccak256("setPaymentToken(address paymentToken,bool enable)"),
+                        paymentToken,
+                        enable,
+                        nonce
+                    )
+                )
+            ),
+            sigs
+        )
+    {
+        paymentTokenMap[paymentToken] = enable;
+    }
 
-        uint8 usdDecimals = AggregatorV3Interface(priceFeed).decimals();
-
-        // convert all to decimal 18
-        uint8 tokenDecimals = 18;
+    /// dev calculate how many VM3 user can got if he pay amount paymentToken.
+    function _canGotVM3(address paymentToken, uint256 payAmount, uint256 vm3Price) internal view returns (uint256) {
+        uint8 paymentTokenDecimals = 18;
         if (paymentToken != address(0)) {
-            tokenDecimals = IERC20(paymentToken).decimals();
+            paymentTokenDecimals = IERC20(paymentToken).decimals();
         }
 
-        if (usdDecimals < 18) {
-            price *= (10 ** (18 - usdDecimals)).toInt256();
-        } else if (usdDecimals > 18) {
-            price /= (10 ** (usdDecimals - 18)).toInt256();
+        if (paymentTokenDecimals < 18) {
+            payAmount *= 10 ** (18 - paymentTokenDecimals);
+        } else if (paymentTokenDecimals > 18) {
+            payAmount /= 10 ** (paymentTokenDecimals - 18);
         }
 
-        if (tokenDecimals < 18) {
-            amount *= 10 ** (18 - tokenDecimals);
-        } else if (tokenDecimals > 18) {
-            amount /= 10 ** (usdDecimals - 18);
-        }
-
-        uint256 gotVM3 = (amount * uint256(price) * 10 ** 18) / exchangeRate;
-        require(gotVM3 > 0, "PrivateSale: gotVM3 is zero");
+        uint256 gotVM3 = (payAmount * 10 ** 18) / vm3Price;
+        require(gotVM3 > 0, "PrivateSale: buy zero VM3");
 
         return gotVM3;
     }
 
     ///@dev user release VM3 to his account
     function _witdrawVM3(
-        uint256 saleNumber
+        uint256 saleNumber,
+        address user
     )
         internal
-        onlyAssetExist(msg.sender, saleNumber)
-        onlySaleReleaseNotPuased(saleNumber)
-        onlyUserReleaseNotPaused(msg.sender, saleNumber)
+        onlyAssetExist(user, saleNumber)
+        onlySaleNotPuased(saleNumber)
+        onlyUserReleaseNotPaused(user, saleNumber)
+        onlySaleReleaseStart(saleNumber)
     {
-        AssetInfo memory assetInfo = userAssetInfos[msg.sender][saleNumber];
-        require(block.timestamp - assetInfo.latestWithdrawTime > MONTH, "PrivateSale: has withdraw recently");
+        (uint16 canWithdrawMonths, uint256 withdrawAmount) = _canWithdrawVM3(user, saleNumber);
+        require(withdrawAmount > 0);
+        IERC20(VM3).transfer(user, withdrawAmount);
+
+        AssetInfo storage assetInfo = userAssetInfos[user][saleNumber];
+        assetInfo.amountWithdrawn += withdrawAmount;
+        assetInfo.latestWithdrawTime = _blockTimestamp();
+        assetInfo.withdrawnMonths += canWithdrawMonths;
+
+        emit WithdrawVM3(user, saleNumber, withdrawAmount);
+    }
+
+    function _canWithdrawVM3(
+        address user,
+        uint256 saleNumber
+    ) internal view returns (uint16 canWithdrawMonths, uint256 withdrawAmount) {
+        AssetInfo memory assetInfo = userAssetInfos[user][saleNumber];
+        if (assetInfo.latestWithdrawTime > 0) {
+            require(_blockTimestamp() - assetInfo.latestWithdrawTime > MONTH, "PrivateSale: has withdraw recently");
+        }
 
         if (assetInfo.latestWithdrawTime == 0) {
-            assetInfo.latestWithdrawTime = saleInfoMap[assetInfo.saleNumber].releaseStartTime;
+            canWithdrawMonths = uint16((_blockTimestamp() - saleInfoMap[saleNumber].releaseStartTime) / MONTH);
+        } else {
+            canWithdrawMonths = uint16((_blockTimestamp() - assetInfo.latestWithdrawTime) / MONTH);
         }
-        uint16 canWithdrawMonths = uint16((block.timestamp - assetInfo.latestWithdrawTime) / MONTH);
 
-        uint256 withdrawAmount = ((assetInfo.amount - assetInfo.amountWithdrawn) /
-            (assetInfo.releaseTotalMonths - assetInfo.withdrawnMonths)) * canWithdrawMonths;
-        IERC20(VM3).transferFrom(address(this), msg.sender, withdrawAmount);
-
-        assetInfo.amountWithdrawn += withdrawAmount;
-        assetInfo.latestWithdrawTime = block.timestamp.toUint64();
-        assetInfo.withdrawnMonths += canWithdrawMonths;
-    }
-
-    /*
-     * calculate hash,just for safeOwnable, internal function
-     */
-    function _createSaleHash(
-        uint256 saleNumber_,
-        uint256 limitAmount_,
-        uint256 exchangeRate_,
-        uint256 nonce_
-    ) internal view returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(
-                    DOMAIN,
-                    keccak256("createSale(uint256 saleNumber,uint256 limitAmount,uint256 exchangeRate)"),
-                    saleNumber_,
-                    limitAmount_,
-                    exchangeRate_,
-                    nonce_
-                )
-            );
-    }
-
-    function _setSaleTimeHash(
-        uint256 saleNumber_,
-        uint64 startTime_,
-        uint64 endTime_,
-        uint256 nonce_
-    ) internal view returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(
-                    DOMAIN,
-                    keccak256("setSaleTime(uint256 saleNumber,uint64 startTime,uint64 endTime)"),
-                    saleNumber_,
-                    startTime_,
-                    endTime_,
-                    nonce_
-                )
-            );
-    }
-
-    function _setSaleExchangeRateHash(
-        uint256 saleNumber_,
-        uint256 exchangeRate_,
-        uint256 nonce_
-    ) internal view returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(
-                    DOMAIN,
-                    keccak256("setSaleExchangeRate(uint256 saleNumber,uint256 exchangeRate)"),
-                    saleNumber_,
-                    exchangeRate_,
-                    nonce_
-                )
-            );
-    }
-
-    function _setReleaseParamsHash(
-        uint256 saleNumber,
-        uint64 releaseStartTime,
-        uint32 releaseTotalMonths,
-        uint256 nonce_
-    ) internal view returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(
-                    DOMAIN,
-                    keccak256("setReleaseParams(uint256 saleNumber,uint64 releaseStartTime,uint32 releaseTotalMonths)"),
-                    saleNumber,
-                    releaseStartTime,
-                    releaseTotalMonths,
-                    nonce_
-                )
-            );
-    }
-
-    function _setUserReleaseMonthsHash(
-        address user,
-        uint256 saleNumber,
-        uint32 releaseTotalMonths,
-        uint256 nonce_
-    ) internal view returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(
-                    DOMAIN,
-                    keccak256("setUserReleaseMonths(address user,uint256 saleNumber,uint32 releaseTotalMonths)"),
-                    user,
-                    saleNumber,
-                    releaseTotalMonths,
-                    nonce_
-                )
-            );
+        withdrawAmount =
+            ((assetInfo.amount - assetInfo.amountWithdrawn) /
+                (assetInfo.releaseTotalMonths - assetInfo.withdrawnMonths)) *
+            canWithdrawMonths;
     }
 
     function _hashToSign(bytes32 data) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", data));
+    }
+
+    /// @dev Returns the block timestamp truncated to 64 bits, i.e. mod 2**64. This method is overridden in tests.
+    function _blockTimestamp() internal view virtual returns (uint64) {
+        return uint64(block.timestamp); // truncation is desired
     }
 
     /*
@@ -603,5 +481,34 @@ contract PrivateSale is SafeOwnable, ReentrancyGuard {
      */
     function totalSale() external view returns (uint256) {
         return (saleNumberList.length);
+    }
+
+    function canGotVM3(address paymentToken, uint256 payAmount, uint256 vm3Price) external view returns (uint256) {
+        return _canGotVM3(paymentToken, payAmount, vm3Price);
+    }
+
+    function canWithdrawVM3(address user, uint256 saleNumber) external view returns (uint16, uint256) {
+        return _canWithdrawVM3(user, saleNumber);
+    }
+
+    function getUserAssetInfo(
+        address user,
+        uint256 saleNumber
+    )
+        external
+        view
+        returns (
+            uint256 amount,
+            uint256 amountWithdrawn,
+            uint64 latestWithdrawTime,
+            uint32 withdrawnMonths,
+            uint32 releaseTotalMonths
+        )
+    {
+        amount = userAssetInfos[user][saleNumber].amount;
+        amountWithdrawn = userAssetInfos[user][saleNumber].amountWithdrawn;
+        latestWithdrawTime = userAssetInfos[user][saleNumber].latestWithdrawTime;
+        withdrawnMonths = userAssetInfos[user][saleNumber].withdrawnMonths;
+        releaseTotalMonths = userAssetInfos[user][saleNumber].releaseTotalMonths;
     }
 }
