@@ -111,12 +111,29 @@ describe('Land Token', () => {
     });
 
     it('If conditions are set to 0, the default activated', async () => {
-      const {Administrator1, Proxy} = await setup();
+      const {Administrator1, Administrator2, Proxy, users} = await setup();
       const SpecialConditions = 0;
       await Administrator1.Proxy.awardItem(Administrator1.address, SpecialConditions, TokenURI);
       const TokenZreo = 0;
       expect(await Proxy.ownerOf(TokenZreo)).to.eq(Administrator1.address);
       expect(await Proxy.getLandStatus(TokenZreo)).to.eq(true);
+
+      // Expecting an reverted when calling injectActiveTo function
+      const User = users[7];
+      const active = 1000;
+      const nonce = 0;
+      const refundHash = web3.utils.hexToBytes(
+        await User.Proxy.getInjectActiveHash(TokenZreo, active, User.address, nonce)
+      );
+      const Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(refundHash));
+      const Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(refundHash));
+      const sendHash = web3.utils.hexToBytes(
+        await User.Proxy.getInjectActiveHashToSign(TokenZreo, active, User.address, nonce)
+      );
+      await Administrator1.Proxy.AddOpHashToPending(sendHash, [Sig1, Sig2]);
+      await expect(User.Proxy.injectActive(TokenZreo, active, nonce)).to.revertedWith(
+        'Land: already active'
+      );
     });
   });
 });

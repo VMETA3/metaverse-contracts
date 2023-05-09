@@ -206,6 +206,7 @@ contract Land is Initializable, ERC721URIStorageUpgradeable, UUPSUpgradeable, Sa
         address account,
         uint256 nonce
     ) private onlyOperationPending(_hashToSign(getInjectActiveHash(tokenId, active, account, nonce))) {
+        require(!_active_value[tokenId].status, "Land: already active");
         require(active > 0, "Land: active value must be greater than zero");
         require(
             _active_value[tokenId].total + active <= _active_value[tokenId].conditions,
