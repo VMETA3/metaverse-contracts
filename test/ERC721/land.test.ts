@@ -1,12 +1,11 @@
-import {expect} from '../chai-setup';
-import {ethers, upgrades, deployments, getUnnamedAccounts, getNamedAccounts} from 'hardhat';
-import {Land} from '../../typechain';
-import {setupUser, setupUsers} from '../utils';
+import { expect } from '../chai-setup';
+import { ethers, upgrades, deployments, getUnnamedAccounts, getNamedAccounts } from 'hardhat';
+import { Land, VM3 } from '../../typechain';
+import { setupUser, setupUsers } from '../utils';
 import web3 from 'web3';
 
 const Name = 'VMeta3 Land';
 const Symbol = 'VM3LAND';
-const signRequired = 2;
 const TokenURI =
   '{"name":"elf 7","description":"this is the 7th elf!","price":"0.09","image":"https://gateway.pinata.cloud/ipfs/QmNzNDMzrVduVrQAvJrp8GwdifEKiQmY1gSfPbq12C8Mhy"}';
 const ZeroAddr = '0x0000000000000000000000000000000000000000';
@@ -14,16 +13,20 @@ const TestConditions = '100000000000000000000000';
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture('Land');
-  const {deployer, owner, Administrator1, Administrator2} = await getNamedAccounts();
-  const owners = [Administrator1, Administrator2, owner];
+  const { possessor, deployer, owner, Administrator1, Administrator2 } = await getNamedAccounts();
 
   const Land = await ethers.getContractFactory('Land');
-  const LandProxy = await upgrades.deployProxy(Land, [Name, Symbol, owners, signRequired]);
+  const TestVOV = await ethers.getContract('VM3');
+  const ActiveThreshold = ethers.utils.parseEther('100');
+  const MinimumInjectionQuantity = ethers.utils.parseEther('1');
+
+  const LandProxy = await upgrades.deployProxy(Land, [Name, Symbol, TestVOV.address, Administrator1, Administrator2, ActiveThreshold, MinimumInjectionQuantity]);
   await LandProxy.deployed();
 
   const contracts = {
     Land: <Land>await ethers.getContract('Land'),
     Proxy: <Land>LandProxy,
+    TestVOV: <VM3>TestVOV,
   };
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
 
@@ -34,106 +37,180 @@ const setup = deployments.createFixture(async () => {
     owner: await setupUser(owner, contracts),
     Administrator1: await setupUser(Administrator1, contracts),
     Administrator2: await setupUser(Administrator2, contracts),
+    possessor: await setupUser(possessor, contracts),
   };
 });
 
 describe('Land Token', () => {
   describe('proxy information', async () => {
     it('The agent contract has the correct information', async () => {
-      const {Proxy, Administrator1, Administrator2} = await setup();
+      const { Proxy } = await setup();
       expect(await Proxy.name()).to.be.eq(Name);
       expect(await Proxy.symbol()).to.be.eq(Symbol);
-      const Owners = await Proxy.owners();
-      expect(Owners.length).to.be.eq(6);
-      expect(Owners[1]).to.be.eq(Administrator1.address);
-      expect(Owners[2]).to.be.eq(Administrator2.address);
     });
   });
+
   describe('mint land', async () => {
-    it('Simulate a scenario that the user creates at will', async () => {
-      const {users} = await setup();
+    it('Should success minter mint nft', async () => {
+      const { users, Administrator2 } = await setup();
       const User = users[7];
-      await expect(User.Proxy.awardItem(User.address, TestConditions, TokenURI)).to.revertedWith(
-        'SafeOwnableUpgradeable: caller is not the owner'
-      );
+      const Minter = Administrator2;
+
+      const TokenId = await User.Proxy._tokenIdCounter();
+      await Minter.Proxy.awardItem(User.address, TokenURI);
+      expect(await User.Proxy.ownerOf(TokenId)).to.eq(User.address);
     });
-    it('Admin build land', async () => {
-      const {users, Proxy, Administrator1} = await setup();
-      const User = users[7];
-      await expect(Administrator1.Proxy.awardItem(User.address, TestConditions, TokenURI))
-        .to.emit(Proxy, 'Transfer')
-        .withArgs(ZeroAddr, User.address, 0);
+
+    it('Should fail non-minter mint nft', async () => {
+      const { users } = await setup();
+      const NonMinter = users[7];
+
+      const hash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('MINTER_ROLE'));
+      await expect(NonMinter.Proxy.awardItem(NonMinter.address, TokenURI)).to.revertedWith(
+        `AccessControl: account ${NonMinter.address.toLowerCase()} is missing role ${hash}`
+      );
     });
   });
 
   describe('inject active', async () => {
-    it('Called in an unauthorized state', async () => {
-      const {users, Administrator1, Administrator2, Proxy} = await setup();
+    it('Should success user inject active', async () => {
+      const { users, possessor, Administrator2 } = await setup();
       const User = users[7];
-      const active = 1000;
-      const nonce = 0;
-      await Administrator1.Proxy.awardItem(Administrator1.address, TestConditions, TokenURI);
-      const TokenZreo = 0;
-      expect(await Proxy.ownerOf(TokenZreo)).to.eq(Administrator1.address);
+      const Minter = Administrator2;
+      const TokenId = await User.Proxy._tokenIdCounter();
 
-      // Regular injection of active values
-      await expect(User.Proxy.injectActive(TokenZreo, active, nonce)).to.revertedWith(
-        'SafeOwnableUpgradeable: operation not in pending'
-      );
-      const refundHash = web3.utils.hexToBytes(
-        await User.Proxy.getInjectActiveHash(TokenZreo, active, User.address, nonce)
-      );
-      const Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(refundHash));
-      const Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(refundHash));
-      const sendHash = web3.utils.hexToBytes(
-        await User.Proxy.getInjectActiveHashToSign(TokenZreo, active, User.address, nonce)
-      );
-      await Administrator1.Proxy.AddOpHashToPending(sendHash, [Sig1, Sig2]);
-      await expect(User.Proxy.injectActive(TokenZreo, active, nonce))
-        .to.emit(Proxy, 'Activation')
-        .withArgs(TokenZreo, active, false);
+      // Mint NFT
+      await Minter.Proxy.awardItem(User.address, TokenURI);
 
-      // When the active value is full, the parcel status is automatically activated
-      const TokenOne = 1;
-      await Administrator1.Proxy.awardItem(Administrator1.address, TestConditions, TokenURI);
-      expect(await Proxy.ownerOf(TokenOne)).to.eq(Administrator1.address);
-      const refundHash2 = web3.utils.hexToBytes(
-        await User.Proxy.getInjectActiveHash(TokenOne, TestConditions, User.address, nonce)
-      );
-      const Sig2_2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(refundHash2));
-      const sendHash2 = web3.utils.hexToBytes(
-        await User.Proxy.getInjectActiveHashToSign(TokenOne, TestConditions, User.address, nonce)
-      );
-      await Administrator1.Proxy.AddOpHashToPending(sendHash2, [Sig2_2]);
-      await expect(User.Proxy.injectActive(TokenOne, TestConditions, nonce))
-        .to.emit(Proxy, 'Activation')
-        .withArgs(TokenOne, TestConditions, true);
+      // Send VOV to users, and approve Proxy to spend VOV
+      const OneHundred = ethers.utils.parseEther('100');
+      await possessor.TestVOV.transfer(User.address, OneHundred);
+      await User.TestVOV.approve(User.Proxy.address, OneHundred);
+
+      // Inject
+      expect(await User.Proxy.getLandStatus(TokenId)).to.eq(false);
+      await expect(User.Proxy.injectActive(TokenId, OneHundred));
+      expect(await User.Proxy.getLandStatus(TokenId)).to.eq(true);
     });
 
-    it('If conditions are set to 0, the default activated', async () => {
-      const {Administrator1, Administrator2, Proxy, users} = await setup();
-      const SpecialConditions = 0;
-      await Administrator1.Proxy.awardItem(Administrator1.address, SpecialConditions, TokenURI);
-      const TokenZreo = 0;
-      expect(await Proxy.ownerOf(TokenZreo)).to.eq(Administrator1.address);
-      expect(await Proxy.getLandStatus(TokenZreo)).to.eq(true);
-
-      // Expecting an reverted when calling injectActiveTo function
+    it('Should fail various non compliant conditions', async () => {
+      const { users, possessor, Administrator2 } = await setup();
       const User = users[7];
-      const active = 1000;
-      const nonce = 0;
-      const refundHash = web3.utils.hexToBytes(
-        await User.Proxy.getInjectActiveHash(TokenZreo, active, User.address, nonce)
+      const Minter = Administrator2;
+      const TokenId = await User.Proxy._tokenIdCounter();
+
+      // Mint NFT
+      await Minter.Proxy.awardItem(User.address, TokenURI);
+
+      // Send VOV to users, and approve Proxy to spend VOV
+      const OneHundred = ethers.utils.parseEther('100');
+      await possessor.TestVOV.transfer(User.address, OneHundred);
+      await User.TestVOV.approve(User.Proxy.address, OneHundred);
+
+      // Injection active is too small
+      const TooSmall = ethers.utils.parseEther('0.1');
+      await expect(User.Proxy.injectActive(TokenId, TooSmall)).to.revertedWith(
+        'Land: active value must be greater than minimum injection quantity'
       );
-      const Sig1 = web3.utils.hexToBytes(await Administrator1.Proxy.signer.signMessage(refundHash));
-      const Sig2 = web3.utils.hexToBytes(await Administrator2.Proxy.signer.signMessage(refundHash));
-      const sendHash = web3.utils.hexToBytes(
-        await User.Proxy.getInjectActiveHashToSign(TokenZreo, active, User.address, nonce)
+
+      // Injection active is too large
+      const TooLarge = ethers.utils.parseEther('1000');
+      await expect(User.Proxy.injectActive(TokenId, TooLarge)).to.revertedWith(
+        'Land: too many active values'
       );
-      await Administrator1.Proxy.AddOpHashToPending(sendHash, [Sig1, Sig2]);
-      await expect(User.Proxy.injectActive(TokenZreo, active, nonce)).to.revertedWith(
-        'Land: already active'
+    });
+  });
+
+  describe('Minting control', async () => {
+    it('Should success admin role call disableMint', async () => {
+      const { users, Administrator1 } = await setup();
+      const User = users[7];
+
+      expect(await User.Proxy.enableMintStatus()).to.eq(true);
+      await Administrator1.Proxy.disableMint();
+      expect(await User.Proxy.enableMintStatus()).to.eq(false);
+    });
+
+    it('Should fail non-admin role call disableMint or enableMint', async () => {
+      const { users } = await setup();
+      const User = users[7];
+
+      await expect(User.Proxy.disableMint()).to.revertedWith(
+        `AccessControl: account ${User.address.toLowerCase()} is missing role 0x0000000000000000000000000000000000000000000000000000000000000000`
       );
+      await expect(User.Proxy.enableMint()).to.revertedWith(
+        `AccessControl: account ${User.address.toLowerCase()} is missing role 0x0000000000000000000000000000000000000000000000000000000000000000`
+      );
+    });
+
+    it('Should success effective enable status after 2 days', async () => {
+      const { users, Administrator1, Administrator2 } = await setup();
+      const User = users[7];
+      const Minter = Administrator2;
+
+      await Administrator1.Proxy.disableMint();
+      await Administrator1.Proxy.enableMint();
+
+      // Enable status not effective, Expect minting failure
+      await expect(Minter.Proxy.awardItem(User.address, TokenURI)).to.revertedWith(
+        'Land: Minting is disabled'
+      );
+
+      // After 2 days, enable status effective, Expect minting success
+      expect(await User.Proxy.enableMintStatus()).to.eq(false);
+
+      await ethers.provider.send('evm_increaseTime', [60 * 60 * 24 * 2 + 1]);
+      const TokenId = await User.Proxy._tokenIdCounter();
+      await Minter.Proxy.awardItem(User.address, TokenURI);
+
+      expect(await User.Proxy.enableMintRequestTime()).to.eq(0);
+      expect(await User.Proxy.enableMintStatus()).to.eq(true);
+    });
+  });
+
+  describe('Minting control', async () => {
+    it('Should success admin role call setActiveThreshold', async () => {
+      const { Administrator1 } = await setup();
+      const NewActiveThreshold = ethers.utils.parseEther('1000');
+
+      // Expect successful request for new active threshold
+      expect(await Administrator1.Proxy.activeThresholdRequestTime()).to.eq(0);
+      await Administrator1.Proxy.setActiveThreshold(NewActiveThreshold);
+      expect(await Administrator1.Proxy.activeThresholdRequestTime()).to.not.eq(0);
+    });
+
+    it('Should fail non-admin role call setActiveThreshold', async () => {
+      const { users } = await setup();
+      const User = users[7];
+      const NewActiveThreshold = ethers.utils.parseEther('1000');
+
+      await expect(User.Proxy.setActiveThreshold(NewActiveThreshold)).to.revertedWith(
+        `AccessControl: account ${User.address.toLowerCase()} is missing role 0x0000000000000000000000000000000000000000000000000000000000000000`
+      );
+    });
+
+    it('Should success effective active threshold after 2 days', async () => {
+      const { users, Administrator1, Administrator2 } = await setup();
+      const User = users[7];
+      const Admin = Administrator1;
+      const Minter = Administrator2;
+      const OldActiveThreshold = ethers.utils.parseEther('100');
+      const NewActiveThreshold = ethers.utils.parseEther('1000');
+
+      // Send request for new active threshold
+      await Admin.Proxy.setActiveThreshold(NewActiveThreshold);
+
+      // Set active threshold not effective
+      expect(await User.Proxy.activeThreshold()).to.eq(OldActiveThreshold);
+
+      // After 2 days, status effective
+      await ethers.provider.send('evm_increaseTime', [60 * 60 * 24 * 2 + 1]);
+      const TokenId = await User.Proxy._tokenIdCounter();
+      await Minter.Proxy.awardItem(User.address, TokenURI);
+
+      // expect(await User.Proxy.getLandConditions(TokenId)).to.eq(NewActiveThreshold.toString());
+      expect(await User.Proxy.activeThresholdRequestTime()).to.eq(0);
+      expect(await User.Proxy.activeThreshold()).to.eq(NewActiveThreshold);
     });
   });
 });
