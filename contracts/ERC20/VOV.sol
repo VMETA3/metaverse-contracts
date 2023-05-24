@@ -107,10 +107,6 @@ contract VOV is ERC20, Ownable {
         emit EvOpenMint(msg.sender, updateMintSwitchTime);
     }
 
-    function mint(address to, uint256 amount) external onlyMinter {
-        _mint(to, amount);
-    }
-
     /// @dev Returns the block timestamp truncated to 64 bits, i.e. mod 2**64. This method is overridden in tests.
     function _blockTimestamp() internal view virtual returns (uint64) {
         return uint64(block.timestamp); // truncation is desired
