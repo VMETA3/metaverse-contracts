@@ -1,44 +1,24 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 
-const Name = 'VMeta3 Land';
-const Symbol = 'VM3Land';
-
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deploy } = hre.deployments;
-  const { deployer } = await hre.getNamedAccounts();
-  const LogicName = 'Land';
-  const ProxyName = 'Proxy_Land';
+  const { deployments, getNamedAccounts } = hre;
+  const { deploy } = deployments;
 
-  await deploy(LogicName, {
-    from: deployer,
-    log: true,
-    autoMine: true, // speed up deployment on local network (ganache, hardhat), no effect on live networks
-  });
+  const { deployer, Administrator1, Administrator2 } = await getNamedAccounts();
 
-  await deployProxy(hre, LogicName, ProxyName);
-};
-
-const deployProxy = async function (hre: HardhatRuntimeEnvironment, LogicName: string, ProxyName: string) {
-  const { log, getExtendedArtifact, save } = hre.deployments;
-  const { Administrator1, Administrator2 } = await hre.getNamedAccounts();
-
-  const Logic = await hre.ethers.getContractFactory(LogicName);
+  const Name = 'VMeta3 Land';
+  const Symbol = 'VM3Land';
   const TestVOV = await hre.ethers.getContract('VM3');
   const ActiveThreshold = hre.ethers.utils.parseEther('100');
   const MinimumInjectionQuantity = hre.ethers.utils.parseEther('1');
-
-  const Proxy = await hre.upgrades.deployProxy(Logic, [Name, Symbol, TestVOV.address, Administrator1, Administrator2, ActiveThreshold, MinimumInjectionQuantity]);
-  await Proxy.deployed();
-
-  log(`contract ${ProxyName} deployed at ${Proxy.address} using ${Proxy.receipt?.gasUsed} gas`);
-
-  const artifact = await getExtendedArtifact(LogicName);
-  const proxyDeployments = {
-    address: Proxy.address,
-    ...artifact,
-  };
-  await save(ProxyName, proxyDeployments);
+  
+  await deploy('Land', {
+    from: deployer,
+    args: [Name, Symbol, TestVOV.address, Administrator1, Administrator2, ActiveThreshold, MinimumInjectionQuantity],
+    log: true,
+    autoMine: true, // speed up deployment on local network (ganache, hardhat), no effect on live networks
+  });
 };
 export default func;
 func.tags = ['VMTLand'];
