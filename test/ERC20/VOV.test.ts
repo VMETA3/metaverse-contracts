@@ -3,7 +3,6 @@ import {ethers, deployments, getUnnamedAccounts, getNamedAccounts} from 'hardhat
 import {MockVOV} from '../../typechain';
 import {setupUser, setupUsers} from '../utils';
 import {time} from '@nomicfoundation/hardhat-network-helpers';
-import {check} from 'prettier';
 
 const TWO_DAYs = 2 * 24 * 60 * 60;
 const ONE_WEEK = 7 * 24 * 60 * 60;
@@ -69,5 +68,6 @@ describe('VOV', () => {
     expect(await VOV.balanceOf(users[3].address)).to.be.eq(2);
     await VOV.increaseTimestamp(ONE_WEEK);
     expect(await VOV.balanceOf(users[3].address)).to.be.eq(3);
+    await users[3].VOV.transfer(users[4].address, 3);
   });
 });

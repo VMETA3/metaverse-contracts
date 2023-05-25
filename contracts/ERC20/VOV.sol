@@ -24,9 +24,10 @@ contract VOV is ERC20, Ownable {
     }
 
     mapping(bytes32 => AccessRole) public accessRoleMap;
+    mapping(address => MintBalance) private mintBalances;
+
     bool public mintSwitch;
     uint64 public updateMintSwitchTime;
-    mapping(address => MintBalance) private mintBalances;
 
     constructor(address admin, address minter) ERC20("Vitality of VMeta3", "VOV") {
         accessRoleMap[MINTER_ROLE] = AccessRole({addr: minter, updateTime: 0, role: MINTER_ROLE});
