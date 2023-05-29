@@ -2,14 +2,15 @@
 pragma solidity ^0.8.9;
 
 // Open Zeppelin libraries for controlling upgradability and access.
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {ERC721URIStorageUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
-import "../../Abstract/SafeOwnableUpgradeable.sol";
-
-contract Land is Initializable, ERC721URIStorageUpgradeable, UUPSUpgradeable, SafeOwnableUpgradeable {
+contract Land is ERC721URIStorage, AccessControl {
     event Activation(uint256 tokenId, uint256 active, bool status);
+    event EnableMintRequest();
+    event ActiveConditionRequest(uint256 newCondition);
 
     // Struct to hold active value details for a token
     struct activeValue {
@@ -23,52 +24,56 @@ contract Land is Initializable, ERC721URIStorageUpgradeable, UUPSUpgradeable, Sa
     bytes32 private DOMAIN; // Domain hash for signature verification
     mapping(uint256 => activeValue) _active_value; // Mapping of token IDs to active value details
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() initializer {}
+    // Permission control
+    IERC20 public VOV; // Vitality of VMeta3 token
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    address public admin;
+    address public minter;
 
-    // Upgradeable contracts should have an initialize method in place of the constructor, and the initializer keyword ensures that the contract is initialized only once
-    function initialize(
+    // Land status modification conditions
+    uint256 private activeCondition;
+    uint256 public minimumInjectionQuantity;
+
+    // Minting and active condition modification control
+    bool private enableMintStatus;
+    uint256 public enableMintRequestTime;
+    uint256 private newActiveCondition;
+    uint256 public activeConditionRequestTime;
+
+    constructor(
         string memory name_,
         string memory symbol_,
-        address[] memory owners,
-        uint8 signRequred
-    ) public initializer {
-        __ERC721_init(name_, symbol_);
+        address vov,
+        address admin_,
+        address minter_,
+        uint256 activeCondition_,
+        uint256 minimumInjectionQuantity_
+    ) ERC721(name_, symbol_) {
+        VOV = IERC20(vov);
+        admin = admin_;
+        minter = minter_;
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _grantRole(MINTER_ROLE, minter);
 
-        __Ownable_init(owners, signRequred);
-
-        __UUPSUpgradeable_init();
-
-        DOMAIN = keccak256(
-            abi.encode(
-                keccak256("Domain(string name,uint256 chainId,address verifyingContract)"),
-                keccak256(bytes(name())),
-                block.chainid,
-                address(this)
-            )
-        );
+        activeCondition = activeCondition_;
+        minimumInjectionQuantity = minimumInjectionQuantity_;
+        // Set the initial mint status enable
+        enableMintStatus = true;
     }
-
-    // This approach is needed to prevent unauthorized upgrades because in UUPS mode, the upgrade is done from the implementation contract, while in the transparent proxy model, the upgrade is done through the proxy contract
-    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     /**
      * @dev Award an item to a player
      * @param player The address of the player to award the item to
-     * @param conditions The conditions of the item
      * @param tokenURI_ The URI of the token
      * @return newItemId The ID of the newitem
      */
-    function awardItem(
-        address player,
-        uint256 conditions,
-        string memory tokenURI_
-    ) public onlyOwner returns (uint256) {
+    function awardItem(address player, string memory tokenURI_) public onlyRole(MINTER_ROLE) returns (uint256) {
+        require(getEnableMintStatus(), "Land: Minting is disabled");
+
         uint256 newItemId = _tokenIdCounter;
         _safeMint(player, newItemId);
         _setTokenURI(newItemId, tokenURI_);
-        _active_value[newItemId].conditions = conditions;
-        _active_value[newItemId].status = (conditions == 0) ? true : false;
+        _active_value[newItemId].conditions = getActiveCondition();
         _increment();
         return newItemId;
     }
@@ -76,54 +81,10 @@ contract Land is Initializable, ERC721URIStorageUpgradeable, UUPSUpgradeable, Sa
     /**
      * @dev Increment the token ID counter
      */
-    function _increment() private onlyOwner {
+    function _increment() private onlyRole(MINTER_ROLE) {
         unchecked {
             _tokenIdCounter += 1;
         }
-    }
-
-    /**
-     * @dev Get the hash for injecting an active value
-     * @param tokenId The ID of the token
-     * @param active The active value to inject
-     * @param to The address to inject the active value to
-     * @param nonce_ The nonce for the transaction
-     * @return The hash for injecting an active value
-     */
-    function getInjectActiveHash(
-        uint256 tokenId,
-        uint256 active,
-        address to,
-        uint256 nonce_
-    ) public view returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(
-                    DOMAIN,
-                    keccak256("injectActive(uint256,uint256,address,uint256)"),
-                    tokenId,
-                    active,
-                    to,
-                    nonce_
-                )
-            );
-    }
-
-    /**
-     * @dev Get the hash to sign for injecting an active value
-     * @param tokenId The ID of the token
-     * @param active The active value to inject
-     * @param to The address to inject the active value to
-     * @param nonce_ The nonce for the transaction
-     * @return The hash to sign for injecting an active value
-     */
-    function getInjectActiveHashToSign(
-        uint256 tokenId,
-        uint256 active,
-        address to,
-        uint256 nonce_
-    ) public view returns (bytes32) {
-        return _hashToSign(getInjectActiveHash(tokenId, active, to, nonce_));
     }
 
     /**
@@ -163,18 +124,29 @@ contract Land is Initializable, ERC721URIStorageUpgradeable, UUPSUpgradeable, Sa
         return _active_value[tokenId].injection_details[account];
     }
 
+    function getEnableMintStatus() public view returns (bool) {
+        if (enableMintStatus == true && block.timestamp > enableMintRequestTime + 2 days) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function getActiveCondition() public view returns (uint256) {
+        if (newActiveCondition > 0 && block.timestamp > activeConditionRequestTime + 2 days) {
+            return newActiveCondition;
+        } else {
+            return activeCondition;
+        }
+    }
+
     /**
      * @dev Inject an active value to a land token
      * @param tokenId The ID of the token
      * @param active The active value to inject
-     * @param nonce The nonce for the transaction
      */
-    function injectActive(
-        uint256 tokenId,
-        uint256 active,
-        uint256 nonce
-    ) public {
-        _injectActive(tokenId, active, _msgSender(), nonce);
+    function injectActive(uint256 tokenId, uint256 active) public {
+        _injectActive(tokenId, active, _msgSender());
     }
 
     /**
@@ -182,15 +154,9 @@ contract Land is Initializable, ERC721URIStorageUpgradeable, UUPSUpgradeable, Sa
      * @param tokenId The ID of the token
      * @param active The active value to inject
      * @param to The address to inject the active value to
-     * @param nonce The nonce for the transaction
      */
-    function injectActiveTo(
-        uint256 tokenId,
-        uint256 active,
-        address to,
-        uint256 nonce
-    ) public {
-        _injectActive(tokenId, active, to, nonce);
+    function injectActiveTo(uint256 tokenId, uint256 active, address to) public {
+        _injectActive(tokenId, active, to);
     }
 
     /**
@@ -198,20 +164,20 @@ contract Land is Initializable, ERC721URIStorageUpgradeable, UUPSUpgradeable, Sa
      * @param tokenId The ID of the token
      * @param active The active value to inject
      * @param account The account to inject the active value to
-     * @param nonce The nonce for the transaction
      */
-    function _injectActive(
-        uint256 tokenId,
-        uint256 active,
-        address account,
-        uint256 nonce
-    ) private onlyOperationPending(_hashToSign(getInjectActiveHash(tokenId, active, account, nonce))) {
+    function _injectActive(uint256 tokenId, uint256 active, address account) private {
         require(!_active_value[tokenId].status, "Land: already active");
-        require(active > 0, "Land: active value must be greater than zero");
+        require(
+            active >= minimumInjectionQuantity,
+            "Land: active value must be greater than minimum injection quantity"
+        );
         require(
             _active_value[tokenId].total + active <= _active_value[tokenId].conditions,
             "Land: too many active values"
         );
+
+        VOV.transferFrom(msg.sender, address(this), active);
+
         _active_value[tokenId].total += active;
         _active_value[tokenId].injection_details[account] += active;
 
@@ -220,12 +186,29 @@ contract Land is Initializable, ERC721URIStorageUpgradeable, UUPSUpgradeable, Sa
         emit Activation(tokenId, active, _active_value[tokenId].status);
     }
 
-    /**
-     * @dev Internal function to get the hash to sign for injecting an active value
-     * @param data The data to hash
-     * @return The hash to sign for injecting an active value
-     */
-    function _hashToSign(bytes32 data) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", data));
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, AccessControl) returns (bool) {
+        return ERC721.supportsInterface(interfaceId) || AccessControl.supportsInterface(interfaceId);
+    }
+
+    function enableMint() public onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(!enableMintStatus, "Land: mint already enabled");
+        enableMintRequestTime = block.timestamp;
+        enableMintStatus = true;
+        emit EnableMintRequest();
+    }
+
+    function disableMint() public onlyRole(DEFAULT_ADMIN_ROLE) {
+        enableMintStatus = false;
+    }
+
+    function setActiveCondition(uint256 newActiveCondition_) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        uint256 oldActiveCondition = getActiveCondition();
+        require(newActiveCondition_ > oldActiveCondition, "Land: new active condition must be greater than current");
+
+        // The last condition will be recorded.
+        activeCondition = oldActiveCondition;
+        newActiveCondition = newActiveCondition_;
+        activeConditionRequestTime = block.timestamp;
+        emit ActiveConditionRequest(newActiveCondition);
     }
 }
