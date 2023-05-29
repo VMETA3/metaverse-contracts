@@ -191,13 +191,14 @@ contract Land is ERC721URIStorage, AccessControl {
     }
 
     function enableMint() public onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(!enableMintStatus, "Land: mint already enabled");
+        require(!getEnableMintStatus(), "Land: minting already enabled");
         enableMintRequestTime = block.timestamp;
         enableMintStatus = true;
         emit EnableMintRequest();
     }
 
     function disableMint() public onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(getEnableMintStatus(), "Land: minting already disabled");
         enableMintStatus = false;
     }
 
