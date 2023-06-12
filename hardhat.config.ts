@@ -44,6 +44,10 @@ const config: HardhatUserConfig = {
       default: 4,
       bsc_test: '0x2Fe8D2Bc3FD37cD7AcbbE668A7a12F957e79D708',
     },
+    VOVMinter: {
+      default: 4,
+      bsc_test: '0x2Fe8D2Bc3FD37cD7AcbbE668A7a12F957e79D708',
+    },
     interestAccount: {
       default: 5,
     },
