@@ -1,13 +1,13 @@
-import { expect } from '../chai-setup';
-import { ethers, upgrades, deployments, getUnnamedAccounts, getNamedAccounts, network } from 'hardhat';
-import { TestERC20, ActivityReward, VRFCoordinatorV2Mock } from '../../typechain';
-import { setupUser, setupUsers } from '../utils';
+import {expect} from '../chai-setup';
+import {ethers, upgrades, deployments, getUnnamedAccounts, getNamedAccounts, network} from 'hardhat';
+import {TestERC20, ActivityReward, VRFCoordinatorV2Mock} from '../../typechain';
+import {setupUser, setupUsers} from '../utils';
 import web3 from 'web3';
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture('ActivityReward');
   await deployments.fixture('TestERC20');
-  const { deployer, Administrator1, Administrator2 } = await getNamedAccounts();
+  const {deployer, Administrator1, Administrator2} = await getNamedAccounts();
 
   const ActivityReward = await ethers.getContractFactory('ActivityReward');
   const VRFCoordinatorV2MockFactory = await ethers.getContractFactory('VRFCoordinatorV2Mock');
@@ -48,11 +48,11 @@ const setup = deployments.createFixture(async () => {
 describe('ActivityReward', () => {
   describe('Proxy information', async () => {
     it('The logical contract data is empty', async () => {
-      const { ActivityReward } = await setup();
+      const {ActivityReward} = await setup();
       expect(await ActivityReward.ERC20Token()).to.be.eq('0x0000000000000000000000000000000000000000');
     });
     it('The agent contract has the correct information', async () => {
-      const { Proxy, deployer, Administrator1, Administrator2, ERC20Token } = await setup();
+      const {Proxy, deployer, Administrator1, Administrator2, ERC20Token} = await setup();
       await Administrator1.Proxy.setERC20(ERC20Token.address);
       await Administrator1.Proxy.setSpender(deployer.address);
       expect(await Proxy.ERC20Token()).to.be.eq(ERC20Token.address);
@@ -67,7 +67,7 @@ describe('ActivityReward', () => {
 
   describe('Instant rewards', async () => {
     it('It should succeed in getFreeReward', async () => {
-      const { deployer, users, Administrator1, Administrator2, Proxy, ERC20Token } = await setup();
+      const {deployer, users, Administrator1, Administrator2, Proxy, ERC20Token} = await setup();
       await Administrator1.Proxy.setERC20(ERC20Token.address);
       await Administrator1.Proxy.setSpender(deployer.address);
       const User = users[8];
@@ -93,7 +93,7 @@ describe('ActivityReward', () => {
     });
 
     it('It should succeed in getMultipleReward', async () => {
-      const { deployer, users, Administrator1, Administrator2, Proxy, VRFCoordinatorV2Mock, ERC20Token } = await setup();
+      const {deployer, users, Administrator1, Administrator2, Proxy, VRFCoordinatorV2Mock, ERC20Token} = await setup();
       await Administrator1.Proxy.setChainlink(250000000, 1, ethers.constants.HashZero, 3);
       await Administrator1.Proxy.setERC20(ERC20Token.address);
       await Administrator1.Proxy.setSpender(deployer.address);
@@ -129,7 +129,7 @@ describe('ActivityReward', () => {
     const SecondsForMonth = SecondsForDay * 30;
 
     it('The injection pool needs to be released once', async () => {
-      const { deployer, Proxy, ERC20Token, users, Administrator1, Administrator2 } = await setup();
+      const {deployer, Proxy, ERC20Token, users, Administrator1, Administrator2} = await setup();
       await Administrator1.Proxy.setERC20(ERC20Token.address);
       await Administrator1.Proxy.setSpender(deployer.address);
       const User = users[8];
@@ -161,7 +161,7 @@ describe('ActivityReward', () => {
     });
 
     it('Next month, release 10%', async () => {
-      const { deployer, Proxy, users, Administrator1, Administrator2, ERC20Token } = await setup();
+      const {deployer, Proxy, users, Administrator1, Administrator2, ERC20Token} = await setup();
       await Administrator1.Proxy.setERC20(ERC20Token.address);
       await Administrator1.Proxy.setSpender(deployer.address);
       const User = users[8];
@@ -196,7 +196,7 @@ describe('ActivityReward', () => {
     });
 
     it('When the number of releases is less than 2, release 2', async () => {
-      const { deployer, Proxy, users, Administrator1, Administrator2, ERC20Token } = await setup();
+      const {deployer, Proxy, users, Administrator1, Administrator2, ERC20Token} = await setup();
       await Administrator1.Proxy.setERC20(ERC20Token.address);
       await Administrator1.Proxy.setSpender(deployer.address);
       const User = users[8];
@@ -224,7 +224,7 @@ describe('ActivityReward', () => {
     });
 
     it('When the pool not enough 2, release all', async () => {
-      const { deployer, Proxy, users, Administrator1, Administrator2, ERC20Token } = await setup();
+      const {deployer, Proxy, users, Administrator1, Administrator2, ERC20Token} = await setup();
       await Administrator1.Proxy.setERC20(ERC20Token.address);
       await Administrator1.Proxy.setSpender(deployer.address);
       const User = users[8];
@@ -251,7 +251,7 @@ describe('ActivityReward', () => {
     });
 
     it('New features in version 2', async () => {
-      const { deployer, Proxy, users, Administrator1, Administrator2, ERC20Token } = await setup();
+      const {deployer, Proxy, users, Administrator1, Administrator2, ERC20Token} = await setup();
       await Administrator1.Proxy.setERC20(ERC20Token.address);
       await Administrator1.Proxy.setSpender(deployer.address);
       const User = users[8];
@@ -264,7 +264,9 @@ describe('ActivityReward', () => {
       await deployer.ERC20Token.approve(Proxy.address, OnehundredToken);
 
       // Injection income and pool
-      expect((await Proxy.injectionIncomeAndPool(User.address, OnehundredToken)).toString()).to.be.eq(`${FiveToken.toString()},${NinetyFiveToken.toString()}`);
+      expect((await Proxy.injectionIncomeAndPool(User.address, OnehundredToken)).toString()).to.be.eq(
+        `${FiveToken.toString()},${NinetyFiveToken.toString()}`
+      );
 
       // Inject release reward
       const InjectReleaseRewardHash = await Proxy.injectReleaseRewardHash(User.address, OnehundredToken, nonce);

@@ -75,6 +75,10 @@ const config: HardhatUserConfig = {
       url: node_url('bsc_test'),
       accounts: accounts('bsc_test'),
     },
+    scroll_alpha_l2: {
+      url: node_url('scroll_alpha_l2'),
+      accounts: accounts('scroll_alpha_l2'),
+    },
   }),
   paths: {
     sources: 'contracts',
