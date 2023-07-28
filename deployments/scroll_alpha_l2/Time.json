@@ -1,0 +1,43 @@
+{
+  "address": "0xfa03185ea6a15bA91310686e562c521786334b34",
+  "abi": [],
+  "transactionHash": "0xe5e95fdaf0520c189d2f05cae82e3e2bfecfaf58c190a81a99f4e31687d38c16",
+  "receipt": {
+    "to": null,
+    "from": "0x55f8780DEA1B64aB7e12F0Cf9D40cEBE167dfDf9",
+    "contractAddress": "0xfa03185ea6a15bA91310686e562c521786334b34",
+    "transactionIndex": 7,
+    "gasUsed": "72217",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x13f61ad757ff69c83e16554cf9e39387440b7e8529720c655eecbe9e1f871ef9",
+    "transactionHash": "0xe5e95fdaf0520c189d2f05cae82e3e2bfecfaf58c190a81a99f4e31687d38c16",
+    "logs": [],
+    "blockNumber": 3884009,
+    "cumulativeGasUsed": "1460068",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "numDeployments": 1,
+  "solcInputHash": "d4e963fefde0e06fc0380507c17a70cb",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.9+commit.e5eed63a\"},\"language\":\"Solidity\",\"output\":{\"abi\":[],\"devdoc\":{\"author\":\"Stone (@Vmeta3 Labs)\",\"details\":\"If it is not in development mode, please do not modify the current time\",\"kind\":\"dev\",\"methods\":{},\"title\":\"Control the current timestamp for easy debugging\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/Lib/Time.sol\":\"Time\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":2000},\"remappings\":[]},\"sources\":{\"contracts/Lib/Time.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n\\npragma solidity ^0.8.9;\\n\\n/**\\n * @title Control the current timestamp for easy debugging\\n * @author Stone (@Vmeta3 Labs)\\n * @dev If it is not in development mode, please do not modify the current time\\n */\\nlibrary Time {\\n    struct Timestamp {\\n        uint256 _current_time;\\n    }\\n\\n    function _getCurrentTime(Timestamp storage timestamp) internal view returns (uint256) {\\n        if (timestamp._current_time > 0) {\\n            return timestamp._current_time;\\n        } else {\\n            return block.timestamp;\\n        }\\n    }\\n\\n    function _setCurrentTime(Timestamp storage timestamp, uint256 time_map) internal {\\n        timestamp._current_time = time_map;\\n    }\\n}\\n\",\"keccak256\":\"0x9bc2a747c41f3366a6a908e8ebb52194b6b3b5ab159a646ea48bb8ae381adae8\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x60566037600b82828239805160001a607314602a57634e487b7160e01b600052600060045260246000fd5b30600052607381538281f3fe73000000000000000000000000000000000000000030146080604052600080fdfea26469706673582212203cf3f04905576f3fa5fbba6d1d2f2282a0a449c575a663c9bfe4149e278c9a6a64736f6c63430008090033",
+  "deployedBytecode": "0x73000000000000000000000000000000000000000030146080604052600080fdfea26469706673582212203cf3f04905576f3fa5fbba6d1d2f2282a0a449c575a663c9bfe4149e278c9a6a64736f6c63430008090033",
+  "devdoc": {
+    "author": "Stone (@Vmeta3 Labs)",
+    "details": "If it is not in development mode, please do not modify the current time",
+    "kind": "dev",
+    "methods": {},
+    "title": "Control the current timestamp for easy debugging",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": null
+  }
+}
