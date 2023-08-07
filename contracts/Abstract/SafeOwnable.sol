@@ -83,6 +83,29 @@ abstract contract SafeOwnable is Context {
         emit OperationAdded(opHash);
     }
 
+    modifier onlyMultipleOwnerIndependent(bytes32 dataHash, bytes[] memory sigs) {
+        require(operationsStatus[dataHash] == OpStatus.OpDefault, "SafeOwnable: repetitive operation");
+        uint8 confirmed = 0;
+        bool[maxNumOwners + 1] memory mark;
+        if (_ownersIndex[_msgSender()] > 0) {
+            confirmed++;
+            mark[_ownersIndex[_msgSender()]] = true;
+        }
+        for (uint8 i = 0; i < sigs.length; i++) {
+            address owner = dataHash.recover(sigs[i]);
+            uint8 ownerIndex = _ownersIndex[owner];
+            require(ownerIndex > 0, "SafeOwnable: signer is not owner");
+            if (mark[ownerIndex] == true) {
+                continue;
+            }
+            mark[ownerIndex] = true;
+            confirmed++;
+        }
+        require(confirmed >= signRequired, "SafeOwnable: no enough confirms");
+        operationsStatus[dataHash] = OpStatus.OpExecuted;
+        _;
+    }
+
     /**
      * @dev Transfers ownership of the contract to a new account (`newOwner`).
      * Can only be called by the current owner.
@@ -110,5 +133,9 @@ abstract contract SafeOwnable is Context {
 
     function owners() public view returns (address[6] memory) {
         return _owners;
+    }
+
+    function HashToSign(bytes32 data) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", data));
     }
 }
